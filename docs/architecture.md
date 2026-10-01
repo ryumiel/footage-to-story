@@ -56,9 +56,11 @@ execution; they must not be silently treated as identity transforms.
 
 ## Contracts versus execution
 
-Executable helpers provide schema validation and ffprobe reported inventories
-with raw evidence (`docs/media-manifest.md`). Metadata extraction does not verify
-decoded frames or timing. A schema can
+Executable helpers provide schema validation, ffprobe reported inventories with
+raw evidence (`docs/media-manifest.md`), and supplied-document comparisons
+(`docs/document-integrity.md`), and hash-bound decoded video scans
+(`docs/media-verification.md`). Edit/timeline/audio and proxy mapping gates remain pending.
+A schema can
 require `job_id`, but cannot establish that two separately supplied job IDs match.
 It can require a digest-shaped string, but cannot prove that the bytes were approved.
 

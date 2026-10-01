@@ -15,8 +15,10 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
   Do not create custom schema keywords, a validator engine, or model-based validation.
 - Current contracts are in `schemas/2.0.0/`. Unknown fields must fail, not disappear.
   Never repair a contract by inventing source IDs, evidence, dates, or permissions.
-- Keep cross-file/media invariants separate. They are NOT implemented yet.
-  Never treat schema conformance as proof of source validity or export readiness.
+- Keep cross-file/media invariants separate from schemas. Declared-document checks
+  and bounded source-hash/decoded-video scans are implemented; edit/timeline/audio,
+  proxy mapping, and authentic approval gates are NOT implemented.
+  Never treat schema or record conformance as proof of source validity or export readiness.
 - Use 0-based, OUT-exclusive ranges. Milliseconds locate analysis candidates;
   final source/timeline cuts use integer frame indices and rational FPS.
 - The human approves an exact plan revision and SHA-256 of the stored file bytes.

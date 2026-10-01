@@ -77,7 +77,7 @@ These validate record structure, not truth or consent. An LLM can still write a
 false statement that has a valid shape. Authorization and approval must be bound
 to a trusted human event by future execution code.
 
-## 6. Domain integrity is a separate, unimplemented gate
+## 6. Document integrity and media gates remain separate from schemas
 
 The following checks cannot be replaced by passing a single-document schema:
 
@@ -93,18 +93,27 @@ The following checks cannot be replaced by passing a single-document schema:
 | Locked decisions survive a replan | Previous and current artifacts |
 | Approval matches this plan | Authentic human record + revision + SHA-256 |
 
-The inventory helper now rejects duplicate source IDs/file identities and checks
-for ordinary source changes during probing/hashing. This is local input hygiene,
-not the cross-document or decoded-media gate described above. See
-`docs/media-manifest.md` for the extraction limits.
+The inventory helper rejects duplicate source IDs/file identities and checks for
+ordinary source changes during probing/hashing (`docs/media-manifest.md`).
+`scripts/check_integrity.py` now separately checks supplied job identity, unique
+IDs, source/evidence/select references, range ordering, declared source bounds and
+request scope, full select evidence coverage, and review revision/issue links.
+Unknown declared bounds block range checks needing them. See
+`docs/document-integrity.md` for dependencies, policies, and exact coverage.
 
-Keep these as small application invariants when M1 is implemented; do not build
+The table describes the evidence required for complete execution, not the proof
+provided by the record helpers. A separate bounded source/video scanner now checks
+current hashes, decoded counts, and exact video PTS/CFR (`docs/media-verification.md`).
+Edit bounds, proxy mappings, timeline/audio, prior locks, and authentic approval/hash
+verification remain unimplemented.
+
+Keep these as small application invariants as M1 develops; do not build
 another schema engine. Runtime failures should be explicit errors, not Python
 `assert` statements that can be disabled. Assertions in test code are appropriate.
 
 Boundary tests deliberately show examples that pass a schema but fail one of these
-invariants. Those tests document the limit; they are not tests of an implemented
-integrity checker. The CLI prints this limitation even on success.
+invariants. They document the schema validator's limit; separate tests now cover
+the implemented document checker. Each CLI prints its own limitations on success.
 
 ## 7. Approval digest convention
 

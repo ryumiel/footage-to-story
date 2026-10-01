@@ -15,11 +15,13 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Seven strict stage contracts plus a shared `$defs` resource.
 - Offline JSON Schema validation using `jsonschema` and `referencing`.
 - Local ffprobe manifest extraction with exact-byte hashes and raw metadata evidence.
+- Cross-document record checks for IDs, references, ranges, and declared bounds/scope.
+- Bound source-byte checks and conservative decoded video timing scans for MOV/MP4 and WAV.
 - Synthetic positive fixtures, negative tests, and explicit validation-boundary tests.
 - English instructions, migration guidance, architecture, and a design review.
 
-Cross-document integrity checks, frame-boundary verification,
-FCPXML export, genuine approval capture, and live Gemini analysis remain unimplemented.
+Edit/timeline and audio timing verification, proxy maps, FCPXML export, genuine
+approval capture, prior-lock verification, and live Gemini analysis remain unimplemented.
 A `SCHEMA_VALID` result is not approval to upload media or export a timeline.
 
 ## Responsibility split
@@ -29,7 +31,7 @@ A `SCHEMA_VALID` result is not approval to upload media or export a timeline.
 | ChatGPT | Analysis requests, selects, narrative, edit plans, editorial review |
 | Codex | Local development and explicitly delegated ChatGPT/user-side execution |
 | Antigravity + Gemini | Observe approved media and return analysis; no independent editorial decisions |
-| Deterministic code | Schema validation now; media/integrity/time/export operations in later milestones |
+| Deterministic code | Schema validation, inventory, document comparisons, and source/video scans now; timeline/audio/approval/export gates later |
 | Human editor | Confirm facts, authorize uploads, approve exact plans, finish in Resolve |
 
 The same committed skills can be read by local agents. Visibility is not an access
@@ -47,6 +49,8 @@ profiles/                   COMMIT: editorial preferences
 schemas/2.0.0/              COMMIT: seven contracts + common definitions
 scripts/validate_json.py    COMMIT: standard-library integration and CLI
 scripts/probe_manifest.py   COMMIT: local reported inventory and evidence
+scripts/check_integrity.py  COMMIT: document relationships and declared bounds
+scripts/verify_media.py     COMMIT: source hashes and decoded video timing evidence
 examples/contracts/        COMMIT: deliberately synthetic test documents
 tests/                      COMMIT: automated contract tests
 docs/                       COMMIT: design, compatibility, migration, review
@@ -93,8 +97,9 @@ manifest -> analysis request -> Antigravity/Gemini observations
          -> integrity/media gate -> deterministic exporter -> Resolve Free
 ```
 
-This describes the intended workflow. Contract validation and local
-reported-manifest extraction are implemented. Full stage execution
+This describes the intended workflow. Contract validation, local reported-manifest
+extraction, document relationship checks, and bounded video timing scans are implemented.
+Full stage execution
 remains pending. Read `ROADMAP.md` before asking an agent to run it.
 
 ## Contract policy
@@ -115,6 +120,8 @@ Legacy v2-repository documents are not silently accepted or migrated. See
 
 - `docs/review.md`: findings, fixes, and unresolved execution gates.
 - `docs/media-manifest.md`: ffprobe CLI usage, evidence, and limitations.
+- `docs/document-integrity.md`: supplied-document checks and separate execution gates.
+- `docs/media-verification.md`: supported formats, decoded timing, identity, and scan limits.
 - `docs/schema-catalog.md`: the field-level contract decisions.
 - `docs/validation.md`: exactly what the validator does and does not prove.
 - `docs/repository-policy.md`: source versus real job data versus build outputs.

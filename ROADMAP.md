@@ -16,13 +16,15 @@
 
 - [ ] Capture exact dependency resolution for the intended deployment environment.
 - [x] Extract a media manifest with ffprobe and document evidence for metadata.
-- [ ] Verify source identity, unique IDs, cross-job consistency, and time mappings.
-- [ ] Check cross-document references, interval ordering, media bounds, and FPS.
+- [x] Check unique IDs, supplied job consistency, cross-document references, and interval ordering.
+- [x] Check declared source bounds, request scope, and evidence interval coverage.
+- [x] Bind supported local source scans to file hashes and check decoded video counts, PTS, and CFR.
+- [ ] Verify edit bounds against current decoded media and implement source-time/proxy mappings.
 - [ ] Check sequential timeline continuity, frame counts, and audio synchronization.
 - [ ] Capture authentic human approval and verify revision plus exact plan digest.
 - [ ] Implement and test a deterministic FCPXML exporter.
 - [x] Generate real synthetic video/audio fixtures, not just JSON placeholders.
-- [ ] Extend media fixtures to variable-rate and corrupted sources for timing gates.
+- [x] Extend media fixtures to variable-rate, corrupted, and truncated sources for timing gates.
 - [ ] Validate XML and perform an actual DaVinci Resolve Free import test.
 
 ## M2 - Editorial stage execution

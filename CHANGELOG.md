@@ -7,6 +7,14 @@
 - Kept unknown metadata explicit and CFR status UNKNOWN pending timing checks.
 - Added generated synthetic video/audio integration tests and failure tests.
 - Documented the inventory tool's usage, evidence, and execution limits.
+- Added a separate schema-first document integrity checker for job/ID/reference,
+  range, declared-bound/scope, evidence, and review-link consistency.
+- Preserved manual non-AI edit checks and explicit unverified media/approval gates.
+- Added hash-bound MOV/MP4/WAV scans with full decoded-frame evidence, conservative
+  video CFR/PTS checks, inventory comparisons, and explicit remaining audio/timeline gates.
+- Rejected composite file demuxers and disabled external MOV track references so
+  a wrapper hash cannot stand in for unbound dependent media.
+- Extended synthetic tests to VFR, B frames, corrupted payloads, and truncated containers.
 
 ## Repository v3 / tooling 0.3.0 - 2026-10-01
 

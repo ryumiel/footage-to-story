@@ -33,9 +33,11 @@ not authorize Antigravity to make editorial choices or grant tools/network acces
 
 ## Current execution limit
 
-Schema validation and local ffprobe reported-manifest extraction are implemented.
-See `docs/media-manifest.md` for the real inventory command and its limits.
-Refer to the roadmap for timing verification, referential integrity, approval
+Schema validation, local ffprobe reported-manifest extraction, and supplied-document
+relationship checks and bounded hash/decoded-video scans are implemented. See
+`docs/media-manifest.md`, `docs/document-integrity.md`, and `docs/media-verification.md`
+for the real commands and their limits. Refer to the roadmap for edit/timeline/audio
+timing, proxy mappings, authentic approval
 verification, and export. Do not invent a command
 for a missing implementation. Missing execution capability is BLOCKED, not PASS.
 

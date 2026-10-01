@@ -224,7 +224,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"MANIFEST_ERROR: {exc}", file=sys.stderr)
         return 2
     print(f"MANIFEST_WRITTEN: {args.output_dir.resolve() / 'manifest.json'}")
-    print("SCHEMA_VALID; reported metadata only; timing, approval, and export NOT_IMPLEMENTED")
+    print("SCHEMA_VALID; reported metadata only; video timing, approval, and export NOT_CHECKED")
     return 0
 
 

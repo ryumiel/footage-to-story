@@ -5,6 +5,10 @@
 **Baseline SHA-256:** `b80a4c5cd418b8a94d27e47b9e56057e905eeb7ea4e3d61ca6442c58294d05ac`  
 **Reviewed source:** repository v3 / tooling 0.3.0 / contracts 2.0.0
 
+This review records the initial v3 contract foundation. Subsequent implemented
+capabilities are recorded in `CHANGELOG.md`, `ROADMAP.md`, and the operational
+documentation; the remaining-gates table below describes the original baseline.
+
 ## Outcome
 
 The contracts are substantially more explicit and testable, and the standard

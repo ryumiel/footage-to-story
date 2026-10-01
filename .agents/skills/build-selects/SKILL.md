@@ -17,7 +17,8 @@ currently reference analysis segment IDs, not arbitrary external documents.
 ## Procedure
 
 1. Check source/job identities, segment references, and candidate time bounds.
-   Report manual verification versus an implemented check; the integrity runner is pending.
+   Use the implemented supplied-document checks described in `docs/document-integrity.md`.
+   Report declared-record consistency separately from actual media verification.
 2. Apply editorial weighting without changing the observations. Keep complete spoken
    thoughts and adequate event context; avoid misleading cuts and fabricated facts.
 3. Use supported roles: dialogue, broll, action, atmosphere, transition, context, unknown.

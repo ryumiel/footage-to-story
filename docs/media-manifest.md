@@ -74,7 +74,9 @@ Reported duration can include offsets or other streams, particularly when using
 the format fallback. Reported frame count is not a decoded count. This tool does
 not verify presentation timestamps, CFR/VFR, decodability, source-frame bounds,
 audio synchronization, cross-document references, or export readiness. Those
-remain separate execution gates.
+remain separate execution gates. `scripts/verify_media.py` now provides a bounded
+hash/decoded-video scan; see `docs/media-verification.md` for its supported formats
+and the additional gates it still leaves unchecked.
 
 ## Tests
 
