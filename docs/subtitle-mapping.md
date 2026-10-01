@@ -47,8 +47,12 @@ changed input documents, changed media stat signatures, existing outputs, and
 concurrent cooperative writers. The map includes the SRT SHA-256, so text/timing
 changes are detectable.
 
-Synthetic rational mapping and generated-media acceptance are PASS. Real
-transcript acceptance and target-application subtitle import are NOT_RUN.
+Synthetic rational mapping, real published-SRT import, and Resolve 21 subtitle
+import acceptance are PASS. Quotation accuracy against spoken audio remains NOT_RUN.
+Resolve rounds subtitle boundaries to timeline frames: the tested 24 FPS clipped
+cue began 9 ms earlier after import, within one frame. Its text and line breaks
+survived; the native SRT round-trip added bold styling and the timeline start
+timecode offset. Import acceptance does not promise exact millisecond preservation.
 Unsupported offsets, mixed-FPS retiming, proxies, and audio conversion
 remain NOT_IMPLEMENTED.
 

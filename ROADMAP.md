@@ -46,7 +46,9 @@
   Editorial stages remain supplied by ChatGPT; resume never grants execution authority.
 - [x] Remap imported quotation cues into SOURCE cuts with rational timing and SRT sidecars.
 - [x] Accept original compressed audio for subtitle timing without requiring PCM intermediates.
-- [ ] Verify generated subtitle import in Resolve with permitted inputs.
+- [x] Verify generated subtitle import in Resolve with permitted inputs.
+  Caption text/line breaks and SOURCE/MUTE coverage passed; frame quantization
+  can shift a subtitle boundary by less than one timeline frame.
 
 ## M3 - Antigravity/Gemini media-analysis adapter
 
