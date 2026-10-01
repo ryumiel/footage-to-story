@@ -18,6 +18,7 @@ venv/
 /artifacts/
 /cache/
 /logs/
+/.ephemeral/
 
 # Raw / derived media anywhere in repository
 *.mp4

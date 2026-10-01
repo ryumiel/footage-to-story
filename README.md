@@ -14,10 +14,11 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - The four editorial profiles from v2, unchanged in meaning and values.
 - Seven strict stage contracts plus a shared `$defs` resource.
 - Offline JSON Schema validation using `jsonschema` and `referencing`.
+- Local ffprobe manifest extraction with exact-byte hashes and raw metadata evidence.
 - Synthetic positive fixtures, negative tests, and explicit validation-boundary tests.
 - English instructions, migration guidance, architecture, and a design review.
 
-Media ingestion, cross-document integrity checks, frame-boundary verification,
+Cross-document integrity checks, frame-boundary verification,
 FCPXML export, genuine approval capture, and live Gemini analysis remain unimplemented.
 A `SCHEMA_VALID` result is not approval to upload media or export a timeline.
 
@@ -45,6 +46,7 @@ chatgpt/                    COMMIT: thin project-level instructions
 profiles/                   COMMIT: editorial preferences
 schemas/2.0.0/              COMMIT: seven contracts + common definitions
 scripts/validate_json.py    COMMIT: standard-library integration and CLI
+scripts/probe_manifest.py   COMMIT: local reported inventory and evidence
 examples/contracts/        COMMIT: deliberately synthetic test documents
 tests/                      COMMIT: automated contract tests
 docs/                       COMMIT: design, compatibility, migration, review
@@ -91,8 +93,9 @@ manifest -> analysis request -> Antigravity/Gemini observations
          -> integrity/media gate -> deterministic exporter -> Resolve Free
 ```
 
-This describes the intended workflow. Only the contract validation path is
-implemented in this revision. Read `ROADMAP.md` before asking an agent to run it.
+This describes the intended workflow. Contract validation and local
+reported-manifest extraction are implemented. Full stage execution
+remains pending. Read `ROADMAP.md` before asking an agent to run it.
 
 ## Contract policy
 
@@ -111,6 +114,7 @@ Legacy v2-repository documents are not silently accepted or migrated. See
 ## Start reading here
 
 - `docs/review.md`: findings, fixes, and unresolved execution gates.
+- `docs/media-manifest.md`: ffprobe CLI usage, evidence, and limitations.
 - `docs/schema-catalog.md`: the field-level contract decisions.
 - `docs/validation.md`: exactly what the validator does and does not prove.
 - `docs/repository-policy.md`: source versus real job data versus build outputs.

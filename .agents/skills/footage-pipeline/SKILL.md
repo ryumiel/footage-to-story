@@ -33,8 +33,10 @@ not authorize Antigravity to make editorial choices or grant tools/network acces
 
 ## Current execution limit
 
-Only schema validation is implemented. Refer to the roadmap for media ingestion,
-referential integrity, approval verification, and export. Do not invent a command
+Schema validation and local ffprobe reported-manifest extraction are implemented.
+See `docs/media-manifest.md` for the real inventory command and its limits.
+Refer to the roadmap for timing verification, referential integrity, approval
+verification, and export. Do not invent a command
 for a missing implementation. Missing execution capability is BLOCKED, not PASS.
 
 ## Report

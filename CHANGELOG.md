@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased - initial M1 inventory
+
+- Added local ffprobe manifest extraction into unchanged 2.0.0 contracts.
+- Preserved raw probe metadata, command/version provenance, and exact-byte hashes.
+- Kept unknown metadata explicit and CFR status UNKNOWN pending timing checks.
+- Added generated synthetic video/audio integration tests and failure tests.
+- Documented the inventory tool's usage, evidence, and execution limits.
+
 ## Repository v3 / tooling 0.3.0 - 2026-10-01
 
 ### Preserved

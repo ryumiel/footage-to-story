@@ -15,13 +15,14 @@
 ## M1 - Deterministic non-AI execution path
 
 - [ ] Capture exact dependency resolution for the intended deployment environment.
-- [ ] Extract a media manifest with ffprobe and document evidence for metadata.
+- [x] Extract a media manifest with ffprobe and document evidence for metadata.
 - [ ] Verify source identity, unique IDs, cross-job consistency, and time mappings.
 - [ ] Check cross-document references, interval ordering, media bounds, and FPS.
 - [ ] Check sequential timeline continuity, frame counts, and audio synchronization.
 - [ ] Capture authentic human approval and verify revision plus exact plan digest.
 - [ ] Implement and test a deterministic FCPXML exporter.
-- [ ] Generate real synthetic video/audio fixtures, not just JSON placeholders.
+- [x] Generate real synthetic video/audio fixtures, not just JSON placeholders.
+- [ ] Extend media fixtures to variable-rate and corrupted sources for timing gates.
 - [ ] Validate XML and perform an actual DaVinci Resolve Free import test.
 
 ## M2 - Editorial stage execution

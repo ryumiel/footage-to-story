@@ -93,6 +93,11 @@ The following checks cannot be replaced by passing a single-document schema:
 | Locked decisions survive a replan | Previous and current artifacts |
 | Approval matches this plan | Authentic human record + revision + SHA-256 |
 
+The inventory helper now rejects duplicate source IDs/file identities and checks
+for ordinary source changes during probing/hashing. This is local input hygiene,
+not the cross-document or decoded-media gate described above. See
+`docs/media-manifest.md` for the extraction limits.
+
 Keep these as small application invariants when M1 is implemented; do not build
 another schema engine. Runtime failures should be explicit errors, not Python
 `assert` statements that can be disabled. Assertions in test code are appropriate.

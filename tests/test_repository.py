@@ -53,6 +53,7 @@ def test_english_source_text_has_no_accidental_korean_prose():
     ("work/private-job/edit_plan.json", True),
     ("work/private-job/story_bible.md", True),
     ("artifacts/validation/junit.xml", True),
+    (".ephemeral/m1-implementation-plan.md", True),
     ("cache/model-response.json", True),
     ("logs/private-run.log", True),
     (".agents/logs/session.json", True),
