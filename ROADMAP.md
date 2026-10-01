@@ -39,7 +39,11 @@
 
 - [x] Implement local supplied transcript/observation imports with preserved raw provenance.
 - [x] Exercise real supplied SRT import with preserved raw bytes (published reference captions).
-- [ ] Exercise real canonical observations with their actual analysis request.
+- [x] Exercise real canonical observations with their actual analysis request.
+  A manual, explicitly authorized `agy` speech-only run imported six observations
+  from two bounded Tears of Steel clips with preserved provider responses and
+  verified source offsets. Candidate speech timing and quotation accuracy remain
+  unverified; caption wording differences were retained.
 - [x] Implement deterministic profile resolution and record resolved parent versions/hashes.
 - [x] Preserve observed historical locked decisions and invalidate stale downstream records.
 - [x] Persist job state, input hashes, immutable run records, and resume inspection.
@@ -51,6 +55,10 @@
   can shift a subtitle boundary by less than one timeline frame.
 
 ## M3 - Antigravity/Gemini media-analysis adapter
+
+Manual `agy` tests established coarse visual observation and speech ingestion.
+Non-speech audio controls failed. These tests do not implement a reusable adapter,
+general proxy mapping, or verified speech boundaries.
 
 - [ ] Verify actual video/audio ingestion and timestamp behavior in the target runtime.
 - [ ] Enforce tool-level permissions, bounded media access, and recorded upload consent.

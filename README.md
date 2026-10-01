@@ -31,7 +31,9 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - English instructions, migration guidance, architecture, and a design review.
 
 Compressed-audio timing/conversion, nonzero-origin/proxy maps, a general
-conversation-host approval adapter and live Gemini analysis remain unimplemented.
+conversation-host approval adapter and reusable Gemini analysis adapter remain
+unimplemented. Manual bounded `agy` speech ingestion and canonical observation
+import have passed; quotation accuracy and provider speech timing remain unverified.
 A `SCHEMA_VALID` result is not approval to upload media or export a timeline.
 
 ## Responsibility split

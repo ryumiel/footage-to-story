@@ -54,6 +54,23 @@ requires inspection before manual removal. Runtime paths inside this repository
 must be under `work/<job_id>/` or `artifacts/<job_id>/`; external storage is allowed.
 Auxiliary contracts do not change existing closed editorial stage contracts.
 
-Synthetic import tests and real published-SRT import are PASS, including exact
-raw-byte preservation. Caption accuracy against spoken audio and actual canonical
-observation import remain NOT_RUN. Provider ingestion is NOT_IMPLEMENTED here.
+Synthetic import tests, real published-SRT import, and actual canonical observation
+import are PASS, including exact raw-byte preservation. The real observation run
+used an explicitly authorized, manual Antigravity `agy` speech-only request for
+Tears of Steel source intervals [23000,31000) and [37000,41000) milliseconds.
+Six supplied observations were normalized by adding verified clip offsets and
+imported against the actual request and original manifest. Full provider responses,
+clip mappings, and normalization hashes remain in ignored job storage.
+
+For this acceptance run, decoded clip video frames matched their original source
+frames; decoded MP3 sample counts matched the requested durations and waveform
+correlation at zero offset exceeded 0.998. These are bounded analysis-extraction
+checks, not general compressed-audio export or proxy-mapping implementation.
+One timed-out provider attempt was retained and followed by one completed retry.
+
+Caption wording is not identical to provider speech observations; differences and
+cut-off utterances were retained rather than repaired from captions. Human listening,
+quotation accuracy, and provider speech-boundary accuracy remain NOT_RUN. Candidate
+milliseconds are not verified frame cuts. Non-speech audio controls failed; general
+sound descriptions remain outside this acceptance scope. A reusable provider runner
+and general source/proxy adapter remain NOT_IMPLEMENTED here.
