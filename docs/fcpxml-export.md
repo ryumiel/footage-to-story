@@ -1,7 +1,8 @@
 # Bounded deterministic FCPXML export
 
 `scripts/export_fcpxml.py` implements sequential FCPXML **1.7** serialization and
-execution preflight. Resolve import compatibility has **NOT_RUN** status. A passing
+execution preflight. A bounded synthetic Resolve 21 import passed structural checks;
+audio playback and rendered output remain **NOT_RUN**. A passing
 export means the supported gates and official DTD validation passed; it does not
 mean the application imported or played the timeline correctly.
 
@@ -60,8 +61,9 @@ or job documents, invoke Resolve, upload data, or make editorial choices.
   does not establish that embedded source timecode is zero.
 - SOURCE retains verified zero-origin contiguous PCM with exact integer sample
   cut boundaries, one common mono/stereo layout, and 48000 Hz sample rate. Other
-  retained sample rates are unsupported by this exporter. MUTE uses the FCPXML
-  `srcEnable="video"` attribute to discard source audio.
+  retained sample rates are unsupported by this exporter. MUTE emits an explicit FCPXML `video` item, omitting an audio component.
+  Resolve 21 imported enabled audio despite `asset-clip srcEnable="video"` in the
+  first synthetic test, so that implicit-component representation is not used.
 - Asset references follow first use in plan order; repeated sources share a
   resource. These are local XML IDs, not invented source/evidence identities.
   Assets reference percent-encoded absolute file URLs. Time values use exact reduced
@@ -118,7 +120,15 @@ Fetch the pinned DTD explicitly before running the integration tests. Set
 which is **NOT_RUN**, not proof of XML validation. The exporter itself always
 requires and validates the actual DTD.
 
-Actual Resolve import/relinking, cut positions, total duration, and SOURCE/MUTE
-playback must be checked in a separately authorized synthetic project. A general conversation-host adapter and optional human-key custody acceptance
+An explicitly approved synthetic Resolve 21 project imported the generated XML
+and resolved its local source. Native OTIO export confirmed zero timeline origin,
+25 FPS, source cuts [10,35) and [45,70), and 50 frames total. SOURCE imported
+as an enabled audio clip for the first 25 frames; MUTE imported as an audio gap
+for the final 25 frames. The initial implicit MUTE mapping failed this check;
+the explicit `video` mapping passed on re-import without manual clip edits.
+The importer initially suggested a one-hour origin, which was explicitly changed
+to zero. This verifies imported structure for this fixture, not general compatibility.
+Audio playback, rendered sample comparison, and moved-source relinking remain
+**NOT_RUN**. Runtime evidence is kept in ignored artifacts. A general conversation-host adapter and optional human-key custody acceptance
 remain outside this implementation.
 Do not call all of M1 complete based on generated XML or synthetic signatures.

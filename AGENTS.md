@@ -44,4 +44,5 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
 - No final FCPXML should be handwritten by a language model. Use the bounded
   deterministic exporter only with fresh checks and genuine exact-plan human approval.
   Unsupported mappings and missing gates must block actual export. Resolve
-  import acceptance remains NOT_RUN.
+  synthetic import structure has passed; playback/render and moved-source relinking
+  acceptance remain NOT_RUN.

@@ -52,11 +52,12 @@ def test_deterministic_exact_rationals_policy_refs_and_encoded_paths(sample):
     assert root.find('resources/format').get('frameDuration') == '1001/30000s'
     asset = root.find('resources/asset')
     assert asset.get('src') == 'file:///synthetic%20media/a%20%26%20%CE%A9.mov'
-    clips = root.findall('.//asset-clip')
+    clips = list(root.find('.//spine'))
     assert clips[0].get('start') == '1001/6000s'
     assert clips[1].get('offset') == '1001/6000s'
     assert clips[0].get('srcEnable') == 'all'
-    assert clips[1].get('srcEnable') == 'video'
+    assert clips[1].tag == 'video'
+    assert clips[1].get('srcEnable') is None
     assert clips[0].get('ref') == clips[1].get('ref') == asset.get('id')
     assert root.find('.//project').get('name') == sample[0]['timeline_name']
     assert root.find('.//sequence').get('duration') == '1001/2000s'
@@ -161,7 +162,7 @@ def test_live_signed_synthetic_export_passes_dtd_and_fresh_gates(run):
     assert report['xml_sha256'] == hashlib.sha256(xml).hexdigest()
     ex.validate_xml(xml, run[2].read_bytes())
     root = ET.fromstring(xml)
-    assert len(root.findall('.//asset-clip')) == 2
+    assert [item.tag for item in root.find('.//spine')] == ['asset-clip', 'video']
     assert root.find('resources/asset').get('src') == run[4].as_uri()
     assert load_json(output / 'check/edit-report.json')['items'][0]['audio_cut']['status'] == 'PASS'
     assert 'actual Resolve import/relinking/audio playback' in report['not_checked']

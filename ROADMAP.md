@@ -31,7 +31,8 @@
 - [x] Generate real synthetic video/audio fixtures, not just JSON placeholders.
 - [x] Extend media fixtures to variable-rate, corrupted, and truncated sources for timing gates.
 - [x] Validate synthetic generated XML against the checksum-pinned official FCPXML 1.7 DTD.
-- [ ] Perform an actual DaVinci Resolve Free import/relink/cut/audio acceptance test.
+- [x] Verify synthetic Resolve 21 import, source resolution, exact cuts/duration, and SOURCE/MUTE track structure.
+- [ ] Verify Resolve audio playback/rendered samples and moved-source relinking.
 
 ## M2 - Editorial stage execution
 

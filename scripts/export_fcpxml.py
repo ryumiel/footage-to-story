@@ -98,11 +98,11 @@ def render(plan: dict, media: dict, edit: dict, rasters: dict) -> bytes:
     sequence = ET.SubElement(project, 'sequence', attributes)
     spine = ET.SubElement(sequence, 'spine')
     for item in plan['items']:
-        ET.SubElement(spine, 'asset-clip', name=item['edit_id'], ref=refs[item['source_id']],
+        ET.SubElement(spine, 'asset-clip' if item['audio_policy'] == 'SOURCE' else 'video', name=item['edit_id'], ref=refs[item['source_id']],
                       offset=time_value(Fraction(int(item['timeline_in_frame']), 1) / rate),
                       start=time_value(Fraction(int(item['source_in_frame']), 1) / rate),
                       duration=time_value(Fraction(int(item['source_out_frame']) - int(item['source_in_frame']), 1) / rate),
-                      srcEnable='all' if item['audio_policy'] == 'SOURCE' else 'video')
+                      **({'srcEnable': 'all'} if item['audio_policy'] == 'SOURCE' else {}))
     ET.indent(root, space='  ')
     return b'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n' + ET.tostring(root, encoding='utf-8') + b'\n'
 
