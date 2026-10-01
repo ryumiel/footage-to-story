@@ -99,7 +99,8 @@ current source hashes and supported decoded video counts/PTS/CFR; see
 `docs/media-verification.md`. `scripts/verify_edit.py` combines fresh scans with
 supported CFR frame/select bounds, sequential video timeline checks, and
 zero-origin PCM sample cuts (`docs/edit-verification.md`). Nonzero-origin/proxy
-mappings, human approval capture, and export remain pending. External-trust
+mappings and human approval capture remain pending. Export has a separate bounded
+implementation in `docs/fcpxml-export.md`; actual Resolve import remains NOT_RUN. External-trust
 signature approval verification is a separate helper (`docs/approval-verification.md`).
 
 In particular, a forged approval with a correctly shaped digest or a mismatched

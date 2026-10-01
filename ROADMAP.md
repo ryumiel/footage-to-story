@@ -26,10 +26,11 @@
 - [ ] Implement nonzero-origin/source-proxy mappings and compressed-audio timing/conversion.
 - [x] Verify externally trusted review signatures, job/revision, and exact plan digest.
 - [ ] Deploy human-controlled signing authority and validate genuine approval capture.
-- [ ] Implement and test a deterministic FCPXML exporter.
+- [x] Implement and test a bounded deterministic FCPXML 1.7 exporter with fresh execution gates.
 - [x] Generate real synthetic video/audio fixtures, not just JSON placeholders.
 - [x] Extend media fixtures to variable-rate, corrupted, and truncated sources for timing gates.
-- [ ] Validate XML and perform an actual DaVinci Resolve Free import test.
+- [x] Validate synthetic generated XML against the checksum-pinned official FCPXML 1.7 DTD.
+- [ ] Perform an actual DaVinci Resolve Free import/relink/cut/audio acceptance test.
 
 ## M2 - Editorial stage execution
 

@@ -39,5 +39,7 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
   in English. Preserve actual source-language dialogue in real job data.
 - Test with `python -m pytest -q`. Put machine reports in ignored `artifacts/`.
   Report PASS, FAIL, NOT_RUN, and NOT_IMPLEMENTED separately.
-- No final FCPXML should be handwritten by a language model. The exporter is
-  explicitly pending, so its absence must block actual export.
+- No final FCPXML should be handwritten by a language model. Use the bounded
+  deterministic exporter only with fresh checks and externally trusted approval.
+  Unsupported mappings and missing gates must block actual export. Resolve
+  import acceptance remains NOT_RUN.

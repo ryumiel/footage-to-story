@@ -23,6 +23,6 @@ as claims that other platforms were tested. The lock supports Python >=3.11, but
 those other interpreter/platform combinations require their own verification.
 
 This locks Python application/test dependencies. It does not lock the operating
-system, uv itself, setuptools build isolation, FFmpeg binaries, or Resolve. Their
+system, uv itself, setuptools build isolation, FFmpeg binaries, system OpenSSH/xmllint, or Resolve. Their
 observed versions must be recorded in execution evidence. Complete deployment
 packaging is a separate task; do not mistake this file for a universal binary lock.

@@ -38,7 +38,8 @@ relationship checks, bounded hash/decoded-video scans, and sequential video edit
 and zero-origin PCM sample-cut checks are implemented. See `docs/media-manifest.md`, `docs/document-integrity.md`,
 `docs/media-verification.md`, and `docs/edit-verification.md` for real commands and
 their limits. Refer to the roadmap for compressed-audio conversion, nonzero-origin/proxy mappings, human approval
-capture, and export. Signature-bound verification is documented in
+capture, and actual Resolve acceptance. Bounded deterministic export is documented
+in `docs/fcpxml-export.md`. Signature-bound verification is documented in
 `docs/approval-verification.md`. Do not invent a command
 for a missing implementation. Missing execution capability is BLOCKED, not PASS.
 

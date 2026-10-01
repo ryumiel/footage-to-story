@@ -61,8 +61,9 @@ raw evidence (`docs/media-manifest.md`), and supplied-document comparisons
 (`docs/document-integrity.md`), and hash-bound decoded video scans
 (`docs/media-verification.md`), plus fresh-media sequential video checks
 and zero-origin PCM sample cuts (`docs/edit-verification.md`). Compressed-audio
-conversion, nonzero-origin/proxy, human approval capture, and export gates remain
-pending. Signature-bound review verification exists with externally administered
+conversion, nonzero-origin/proxy mapping, and human approval capture remain
+pending. Bounded zero-origin FCPXML export is described in `docs/fcpxml-export.md`.
+Signature-bound review verification exists with externally administered
 trust (`docs/approval-verification.md`).
 A schema can
 require `job_id`, but cannot establish that two separately supplied job IDs match.

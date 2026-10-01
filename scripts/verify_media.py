@@ -208,7 +208,7 @@ def verify_media(manifest_path: Path, output: Path, ffprobe: str = "ffprobe",
             command = [executable, "-v", "error", "-protocol_whitelist", "file",
                        "-format_whitelist", "mov,wav", "-enable_drefs", "0",
                        "-show_frames", "-show_streams", "-show_format", "-show_entries",
-                       "frame=stream_index,media_type,pts,duration,nb_samples,sample_fmt,channels,side_data_list", "-of", "json", str(path)]
+                       "frame=stream_index,media_type,pts,duration,nb_samples,sample_fmt,channels,side_data_list,width,height,interlaced_frame", "-of", "json", str(path)]
             raw_path = Path(temporary) / f"decode-{number:04d}.json"
             stderr = decode_to_file(command, raw_path, timeout, max_bytes)
             probe = load_json(raw_path)

@@ -35,6 +35,8 @@ The schema enforces record consistency, not authenticity or digest equality.
 `scripts/verify_approval.py` checks external-trust signatures and exact plan
 job/revision/digest bindings (`docs/approval-verification.md`). Human approval
 capture and deployment of human-controlled signing authority remain pending.
+The bounded exporter (`docs/fcpxml-export.md`) checks signed approval again at
+execution; XML validation does not establish Resolve acceptance.
 For that verifier, `reviewed_by` must be the registered signing principal.
 Never create a real HUMAN approval or signature on the user's behalf.
 

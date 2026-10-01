@@ -27,6 +27,10 @@
   binding job/revision and stored plan SHA-256. Human approval capture and signing
   authority deployment remain pending; the verifier never signs or enrolls keys.
 
+- Added bounded FCPXML 1.7 generation with exact rational timing, encoded source
+  URLs, SOURCE/MUTE mapping, fresh signed approval/media/edit gates, and
+  checksum-pinned official DTD validation. Real Resolve acceptance remains NOT_RUN.
+
 ## Repository v3 / tooling 0.3.0 - 2026-10-01
 
 ### Preserved

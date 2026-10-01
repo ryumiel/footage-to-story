@@ -13,8 +13,9 @@ Current input contracts live in `schemas/2.0.0/`.
 
 **Document, fresh-media, sequential-video, and zero-origin PCM cut checks exist.
 External-trust signature and exact plan approval-binding checks exist; human
-approval capture and the FCPXML exporter remain pending.** Do not claim to export a real timeline.
-This skill records the required procedure for when those components exist.
+approval capture remains pending. A bounded deterministic FCPXML 1.7 exporter
+and official DTD validation exist (`docs/fcpxml-export.md`).** Actual Resolve import
+acceptance is NOT_RUN; do not claim application compatibility from XML validation.
 
 ## Required gates before an export
 
@@ -24,7 +25,9 @@ This skill records the required procedure for when those components exist.
 4. Verify authentic user approval for the exact revision and SHA-256 of plan bytes.
 5. Confirm actual exporter/version support. VFR, mixed rates, retiming, separate audio,
    overlays, and transitions must fail unless separately implemented and tested.
-6. Run the deterministic exporter; never compose final FCPXML with a language model.
+6. Run `scripts/export_fcpxml.py` within the documented supported scope; never
+   compose final FCPXML with a language model. Fetch the checksum-pinned official
+   DTD explicitly with `scripts/fetch_fcpxml_dtd.py` before offline validation.
 7. Validate XML and test actual Resolve Free import as separate results.
 
 Do not substitute a guessed CLI command or plausible XML when any gate is missing.
