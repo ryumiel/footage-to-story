@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://footage-to-story.example/schemas/2.0.0/edit-plan.schema.json",
+  "title": "Sequential Edit Plan",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/schema_version"
+    },
+    "job_id": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "revision": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "timeline_name": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+    },
+    "edit_mode": {
+      "const": "SEQUENTIAL_CUTS"
+    },
+    "timeline_fps": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/rational_rate"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "edit_id": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+          },
+          "source_id": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+          },
+          "source_in_frame": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonnegative_integer"
+          },
+          "source_out_frame": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+          },
+          "timeline_in_frame": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonnegative_integer"
+          },
+          "audio_policy": {
+            "enum": [
+              "SOURCE",
+              "MUTE"
+            ]
+          },
+          "select_ref": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "notes": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/notes"
+          }
+        },
+        "required": [
+          "edit_id",
+          "source_id",
+          "source_in_frame",
+          "source_out_frame",
+          "timeline_in_frame",
+          "audio_policy",
+          "reason",
+          "locked"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "job_id",
+    "revision",
+    "timeline_name",
+    "edit_mode",
+    "timeline_fps",
+    "items"
+  ],
+  "additionalProperties": false
+}

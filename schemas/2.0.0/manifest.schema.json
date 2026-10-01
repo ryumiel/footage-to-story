@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://footage-to-story.example/schemas/2.0.0/manifest.schema.json",
+  "title": "Media Manifest",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/schema_version"
+    },
+    "job_id": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+          },
+          "path": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fps_num": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fps_den": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "frame_count": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cfr_status": {
+            "enum": [
+              "CFR",
+              "VFR",
+              "UNKNOWN"
+            ]
+          },
+          "audio_sample_rate": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "audio_channels": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "content_sha256": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/sha256"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_start_timecode": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "time_base": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/rational_rate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "proxy_path": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notes": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/notes"
+          }
+        },
+        "required": [
+          "source_id",
+          "path",
+          "duration_ms",
+          "fps_num",
+          "fps_den",
+          "frame_count",
+          "cfr_status"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "fps_num": {
+                  "type": "null"
+                }
+              },
+              "required": [
+                "fps_num"
+              ]
+            },
+            "then": {
+              "properties": {
+                "fps_den": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "fps_den": {
+                  "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "cfr_status": {
+                  "const": "CFR"
+                }
+              },
+              "required": [
+                "cfr_status"
+              ]
+            },
+            "then": {
+              "properties": {
+                "fps_num": {
+                  "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+                },
+                "fps_den": {
+                  "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "job_id",
+    "sources"
+  ],
+  "additionalProperties": false
+}

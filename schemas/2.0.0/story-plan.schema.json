@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://footage-to-story.example/schemas/2.0.0/story-plan.schema.json",
+  "title": "Story Plan",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/schema_version"
+    },
+    "job_id": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "thesis": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+    },
+    "chapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "chapter_id": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+          },
+          "title": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+          },
+          "purpose": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+          },
+          "select_ids": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier_list"
+          },
+          "target_duration_ms": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "coverage_gaps": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/notes"
+          },
+          "transition_notes": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/notes"
+          }
+        },
+        "required": [
+          "chapter_id",
+          "title",
+          "purpose",
+          "select_ids"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "select_ids": {
+                  "maxItems": 0
+                }
+              },
+              "required": [
+                "select_ids"
+              ]
+            },
+            "then": {
+              "required": [
+                "coverage_gaps"
+              ],
+              "properties": {
+                "coverage_gaps": {
+                  "minItems": 1
+                }
+              }
+            }
+          }
+        ]
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "job_id",
+    "thesis",
+    "chapters"
+  ],
+  "additionalProperties": false
+}

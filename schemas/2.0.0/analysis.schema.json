@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://footage-to-story.example/schemas/2.0.0/analysis.schema.json",
+  "title": "Footage Analysis",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/schema_version"
+    },
+    "job_id": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "request_id": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "segment_id": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+          },
+          "source_id": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+          },
+          "start_ms": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonnegative_integer"
+          },
+          "end_ms": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+          },
+          "observation_type": {
+            "enum": [
+              "visual",
+              "audio",
+              "dialogue",
+              "mixed",
+              "technical",
+              "uncertain"
+            ]
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+          },
+          "visible_content": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "audible_content": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "technical_notes": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confidence": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/confidence"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "segment_id",
+          "source_id",
+          "start_ms",
+          "end_ms",
+          "observation_type",
+          "summary",
+          "confidence",
+          "evidence"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "observation_type": {
+                  "enum": [
+                    "visual"
+                  ]
+                }
+              },
+              "required": [
+                "observation_type"
+              ]
+            },
+            "then": {
+              "required": [
+                "visible_content"
+              ],
+              "properties": {
+                "visible_content": {
+                  "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "observation_type": {
+                  "enum": [
+                    "audio",
+                    "dialogue"
+                  ]
+                }
+              },
+              "required": [
+                "observation_type"
+              ]
+            },
+            "then": {
+              "required": [
+                "audible_content"
+              ],
+              "properties": {
+                "audible_content": {
+                  "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "observation_type": {
+                  "enum": [
+                    "mixed"
+                  ]
+                }
+              },
+              "required": [
+                "observation_type"
+              ]
+            },
+            "then": {
+              "required": [
+                "visible_content",
+                "audible_content"
+              ],
+              "properties": {
+                "visible_content": {
+                  "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+                },
+                "audible_content": {
+                  "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "observation_type": {
+                  "enum": [
+                    "technical"
+                  ]
+                }
+              },
+              "required": [
+                "observation_type"
+              ]
+            },
+            "then": {
+              "required": [
+                "technical_notes"
+              ],
+              "properties": {
+                "technical_notes": {
+                  "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "minItems": 0
+    },
+    "warnings": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/notes"
+    }
+  },
+  "required": [
+    "schema_version",
+    "job_id",
+    "request_id",
+    "segments"
+  ],
+  "additionalProperties": false
+}

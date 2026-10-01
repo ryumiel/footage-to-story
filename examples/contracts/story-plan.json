@@ -1,0 +1,21 @@
+{
+  "schema_version": "2.0.0",
+  "job_id": "synthetic-demo",
+  "thesis": "Demonstrate a source-traceable plan using fictional inputs.",
+  "chapters": [
+    {
+      "chapter_id": "chapter-001",
+      "title": "Synthetic process and detail",
+      "purpose": "Exercise the contract, not a real story.",
+      "select_ids": [
+        "sel-001",
+        "sel-002"
+      ],
+      "target_duration_ms": 7000,
+      "coverage_gaps": [],
+      "transition_notes": [
+        "Use a simple cut."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+profile: winery
+version: 1
+parent: travel_documentary
+priorities:
+  guide_explanation: 1.0
+  educational_value: 1.0
+  wine_comparison: 0.95
+  cellar_atmosphere: 0.8
+  tasting_reaction: 0.65
+preferred_topics:
+  - vineyard
+  - fermentation
+  - cellar
+  - barrel
+  - winemaking
+  - terroir
+  - guide_explanation
+  - bottle_label
+  - pouring
+  - tasting
+  - wine_comparison
+story_pattern:
+  - place
+  - production
+  - cellar_and_aging
+  - philosophy
+  - tasting_progression
+  - comparison
+  - conclusion
+rules:
+  do_not_equalize_wine_screen_time: true
+  distinguish_quote_from_info_card: true

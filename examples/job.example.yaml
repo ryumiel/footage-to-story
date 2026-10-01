@@ -1,0 +1,9 @@
+job_id: example-winery-tour
+profile: winery
+media_root: /path/to/media
+story_bible: /path/to/private/story_bible.md
+cloud:
+  upload_allowed: false
+output:
+  target_nle: davinci_resolve_free
+  target_duration_seconds: [540, 660]

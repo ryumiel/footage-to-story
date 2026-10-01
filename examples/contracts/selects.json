@@ -1,0 +1,40 @@
+{
+  "schema_version": "2.0.0",
+  "job_id": "synthetic-demo",
+  "profile": "winery",
+  "profile_version": 1,
+  "items": [
+    {
+      "select_id": "sel-001",
+      "source_id": "src-001",
+      "start_ms": 1000,
+      "end_ms": 5000,
+      "role": "dialogue",
+      "decision": "SELECT",
+      "reason": "Synthetic complete explanation.",
+      "evidence_refs": [
+        "seg-001"
+      ],
+      "scores": {
+        "dialogue": 0.9
+      },
+      "locked": false
+    },
+    {
+      "select_id": "sel-002",
+      "source_id": "src-002",
+      "start_ms": 2000,
+      "end_ms": 5000,
+      "role": "broll",
+      "decision": "SELECT",
+      "reason": "Synthetic visual transition.",
+      "evidence_refs": [
+        "seg-002"
+      ],
+      "scores": {
+        "cellar_atmosphere": 0.8
+      },
+      "locked": false
+    }
+  ]
+}

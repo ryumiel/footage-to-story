@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://footage-to-story.example/schemas/2.0.0/analysis-request.schema.json",
+  "title": "Analysis Request",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/schema_version"
+    },
+    "job_id": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "request_id": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "runner": {
+      "const": "antigravity"
+    },
+    "provider": {
+      "const": "gemini"
+    },
+    "cloud_upload_allowed": {
+      "type": "boolean"
+    },
+    "authorization_ref": {
+      "anyOf": [
+        {
+          "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+          },
+          "ranges": {
+            "type": "array",
+            "items": {
+              "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/millisecond_range"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "source_id",
+          "ranges"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+      },
+      "minItems": 1
+    },
+    "requested_categories": {
+      "type": "array",
+      "items": {
+        "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "job_id",
+    "request_id",
+    "runner",
+    "provider",
+    "sources",
+    "questions",
+    "cloud_upload_allowed"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "cloud_upload_allowed": {
+            "const": true
+          }
+        },
+        "required": [
+          "cloud_upload_allowed"
+        ]
+      },
+      "then": {
+        "required": [
+          "authorization_ref"
+        ],
+        "properties": {
+          "authorization_ref": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "authorization_ref": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
+}

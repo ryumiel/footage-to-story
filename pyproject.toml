@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "footage-to-story"
+version = "0.3.0"
+description = "Project-local video editing skills and versioned workflow contracts"
+requires-python = ">=3.11"
+dependencies = [
+  "jsonschema[format-nongpl]>=4.24,<5",
+  "referencing>=0.36,<1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+
+[tool.setuptools]
+packages = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"

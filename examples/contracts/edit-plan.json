@@ -1,0 +1,35 @@
+{
+  "schema_version": "2.0.0",
+  "job_id": "synthetic-demo",
+  "revision": "demo-r1",
+  "timeline_name": "Synthetic Contract Demo",
+  "edit_mode": "SEQUENTIAL_CUTS",
+  "timeline_fps": {
+    "num": 25,
+    "den": 1
+  },
+  "items": [
+    {
+      "edit_id": "edit-001",
+      "source_id": "src-001",
+      "source_in_frame": 25,
+      "source_out_frame": 125,
+      "timeline_in_frame": 0,
+      "audio_policy": "SOURCE",
+      "select_ref": "sel-001",
+      "reason": "Synthetic 4-second dialogue select.",
+      "locked": false
+    },
+    {
+      "edit_id": "edit-002",
+      "source_id": "src-002",
+      "source_in_frame": 50,
+      "source_out_frame": 125,
+      "timeline_in_frame": 100,
+      "audio_policy": "MUTE",
+      "select_ref": "sel-002",
+      "reason": "Synthetic 3-second detail insert.",
+      "locked": false
+    }
+  ]
+}

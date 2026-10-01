@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://footage-to-story.example/schemas/2.0.0/review.schema.json",
+  "title": "Edit Review",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/schema_version"
+    },
+    "job_id": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "edit_plan_revision": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "edit_plan_sha256": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/sha256"
+    },
+    "reviewer_type": {
+      "enum": [
+        "HUMAN",
+        "AI"
+      ]
+    },
+    "reviewed_by": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+    },
+    "reviewed_at": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/timestamp"
+    },
+    "status": {
+      "enum": [
+        "APPROVED",
+        "CHANGES_REQUIRED",
+        "BLOCKED"
+      ]
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "enum": [
+              "INFO",
+              "WARN",
+              "ERROR"
+            ]
+          },
+          "message": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+          },
+          "edit_id": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "severity",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "required_changes": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/notes"
+    },
+    "suggestions": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/notes"
+    }
+  },
+  "required": [
+    "schema_version",
+    "job_id",
+    "edit_plan_revision",
+    "edit_plan_sha256",
+    "reviewer_type",
+    "reviewed_by",
+    "reviewed_at",
+    "status",
+    "issues"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "APPROVED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reviewer_type": {
+            "const": "HUMAN"
+          },
+          "required_changes": {
+            "maxItems": 0
+          },
+          "issues": {
+            "items": {
+              "properties": {
+                "severity": {
+                  "enum": [
+                    "INFO",
+                    "WARN"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "CHANGES_REQUIRED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "required_changes"
+        ],
+        "properties": {
+          "required_changes": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "BLOCKED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "issues": {
+            "contains": {
+              "properties": {
+                "severity": {
+                  "const": "ERROR"
+                }
+              },
+              "required": [
+                "severity"
+              ]
+            },
+            "minContains": 1
+          }
+        }
+      }
+    }
+  ]
+}

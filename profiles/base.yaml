@@ -1,0 +1,15 @@
+profile: base
+version: 1
+parent: null
+priorities:
+  source_integrity: 1.0
+  technical_quality: 0.7
+  dialogue: 0.5
+  action: 0.5
+  scenery: 0.5
+  educational_value: 0.5
+rules:
+  preserve_complete_thoughts: true
+  preserve_event_context: true
+  fabricate_missing_coverage: false
+  default_broll_seconds: [2, 6]

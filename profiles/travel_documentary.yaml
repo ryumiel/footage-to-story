@@ -1,0 +1,29 @@
+profile: travel_documentary
+version: 1
+parent: base
+priorities:
+  dialogue: 0.9
+  educational_value: 0.9
+  atmosphere: 0.75
+  scenery: 0.75
+  action: 0.35
+preferred_topics:
+  - establishing
+  - guide_dialogue
+  - process
+  - architecture
+  - historical_context
+  - detail_broll
+  - reaction
+  - transition
+story_pattern:
+  - arrival_or_context
+  - place
+  - process_or_explanation
+  - experience
+  - comparison_or_insight
+  - closing
+pacing:
+  dialogue_max_seconds: 60
+  broll_seconds: [2, 6]
+  atmosphere_seconds: [3, 8]

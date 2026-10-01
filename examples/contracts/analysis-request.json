@@ -1,0 +1,36 @@
+{
+  "schema_version": "2.0.0",
+  "job_id": "synthetic-demo",
+  "request_id": "request-demo-001",
+  "runner": "antigravity",
+  "provider": "gemini",
+  "cloud_upload_allowed": false,
+  "authorization_ref": null,
+  "sources": [
+    {
+      "source_id": "src-001",
+      "ranges": [
+        {
+          "start_ms": 0,
+          "end_ms": 10000
+        }
+      ]
+    },
+    {
+      "source_id": "src-002",
+      "ranges": [
+        {
+          "start_ms": 0,
+          "end_ms": 8000
+        }
+      ]
+    }
+  ],
+  "questions": [
+    "Describe only visible and audible content; mark uncertainty."
+  ],
+  "requested_categories": [
+    "guide_dialogue",
+    "detail_broll"
+  ]
+}

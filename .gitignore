@@ -1,0 +1,87 @@
+# Secrets / local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python / tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Per-shoot runtime data and generated outputs
+/work/
+/artifacts/
+/cache/
+/logs/
+
+# Raw / derived media anywhere in repository
+*.mp4
+*.MP4
+*.mov
+*.MOV
+*.mxf
+*.MXF
+*.avi
+*.mkv
+*.wav
+*.WAV
+*.aif
+*.aiff
+*.mp3
+*.m4a
+*.flac
+*.jpg
+*.jpeg
+*.png
+*.dng
+*.braw
+
+# Generated editing/interchange outputs
+*.fcpxml
+*.xml.tmp
+*.edl
+*.otio
+*.srt
+*.vtt
+
+# Common OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Package/build/test outputs (never hide the canonical .agents/skills tree)
+/build/
+/dist/
+*.egg-info/
+.coverage
+/htmlcov/
+*.zip
+*.whl
+*.tar.gz
+
+# Alternate local job and runner output locations
+/jobs/
+/.agents/cache/
+/.agents/logs/
+
+# Additional case-insensitive camera/audio extensions
+*.[mM][pP]4
+*.[mM][oO][vV]
+*.[wW][aA][vV]
+*.[mM][kK][vV]
+*.MOV.tmp
+
+# Image/raw-media variants that otherwise leak through case-sensitive Git globs
+*.[jJ][pP][gG]
+*.[jJ][pP][eE][gG]
+*.[pP][nN][gG]
+*.[hH][eE][iI][cC]
+*.[dD][nN][gG]
+*.[bB][rR][aA][wW]
+*.[mM][xX][fF]

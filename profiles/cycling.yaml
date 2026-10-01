@@ -1,0 +1,31 @@
+profile: cycling
+version: 1
+parent: base
+priorities:
+  action: 1.0
+  scenery: 0.85
+  route_change: 0.8
+  rider_interaction: 0.7
+  dialogue: 0.25
+  educational_value: 0.15
+preferred_topics:
+  - descent
+  - climb
+  - corner
+  - overtake
+  - rider_interaction
+  - traffic_event
+  - scenery
+  - marked_moment
+story_pattern:
+  - context
+  - progression
+  - highlight_clusters
+  - scenic_breathing_room
+  - closing
+pacing:
+  action_seconds: [2, 8]
+  scenery_seconds: [3, 10]
+rules:
+  traffic_events_require_context: true
+  do_not_invent_gps: true

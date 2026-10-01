@@ -1,0 +1,38 @@
+{
+  "schema_version": "2.0.0",
+  "job_id": "synthetic-demo",
+  "request_id": "request-demo-001",
+  "segments": [
+    {
+      "segment_id": "seg-001",
+      "source_id": "src-001",
+      "start_ms": 1000,
+      "end_ms": 5000,
+      "observation_type": "dialogue",
+      "topic": "guide_dialogue",
+      "summary": "Synthetic example of a guide explanation.",
+      "audible_content": "Synthetic audio description, not an actual quotation.",
+      "confidence": 0.8,
+      "evidence": [
+        "Synthetic fixture; no media has been analyzed."
+      ]
+    },
+    {
+      "segment_id": "seg-002",
+      "source_id": "src-002",
+      "start_ms": 2000,
+      "end_ms": 5000,
+      "observation_type": "visual",
+      "topic": "detail_broll",
+      "summary": "Synthetic example of a barrel detail.",
+      "visible_content": "A fictional static close-up of a barrel.",
+      "confidence": 0.7,
+      "evidence": [
+        "Synthetic fixture; no real footage exists."
+      ]
+    }
+  ],
+  "warnings": [
+    "These observations are fictional contract fixtures."
+  ]
+}

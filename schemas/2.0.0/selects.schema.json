@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://footage-to-story.example/schemas/2.0.0/selects.schema.json",
+  "title": "Selects",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/schema_version"
+    },
+    "job_id": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "profile": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "profile_version": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "select_id": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+          },
+          "source_id": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+          },
+          "start_ms": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonnegative_integer"
+          },
+          "end_ms": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+          },
+          "role": {
+            "enum": [
+              "dialogue",
+              "broll",
+              "action",
+              "atmosphere",
+              "transition",
+              "context",
+              "unknown"
+            ]
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision": {
+            "enum": [
+              "SELECT",
+              "REJECT",
+              "REVIEW"
+            ]
+          },
+          "reason": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+          },
+          "evidence_refs": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier_list",
+            "minItems": 1
+          },
+          "scores": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/scores"
+          },
+          "locked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "select_id",
+          "source_id",
+          "start_ms",
+          "end_ms",
+          "role",
+          "decision",
+          "reason",
+          "evidence_refs",
+          "locked"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "decision": {
+                  "const": "SELECT"
+                }
+              },
+              "required": [
+                "decision"
+              ]
+            },
+            "then": {
+              "properties": {
+                "role": {
+                  "not": {
+                    "const": "unknown"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "minItems": 0
+    }
+  },
+  "required": [
+    "schema_version",
+    "job_id",
+    "profile",
+    "profile_version",
+    "items"
+  ],
+  "additionalProperties": false
+}

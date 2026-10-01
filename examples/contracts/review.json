@@ -1,0 +1,19 @@
+{
+  "schema_version": "2.0.0",
+  "job_id": "synthetic-demo",
+  "edit_plan_revision": "demo-r1",
+  "edit_plan_sha256": "dc807442b237cfb95b14dcdfd7c9c2ef143da4a223c458136031c10ab1d8de59",
+  "reviewer_type": "AI",
+  "reviewed_by": "Synthetic reviewer (not a real review)",
+  "reviewed_at": "2026-10-01T00:00:00Z",
+  "status": "BLOCKED",
+  "issues": [
+    {
+      "severity": "ERROR",
+      "message": "Synthetic fixtures only: no real media, integrity gate, or human approval."
+    }
+  ],
+  "required_changes": [
+    "Run real preflight and obtain explicit human approval before export."
+  ]
+}
