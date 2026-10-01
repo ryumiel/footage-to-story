@@ -61,7 +61,7 @@ raw evidence (`docs/media-manifest.md`), and supplied-document comparisons
 (`docs/document-integrity.md`), and hash-bound decoded video scans
 (`docs/media-verification.md`), plus fresh-media sequential video checks
 and zero-origin PCM sample cuts (`docs/edit-verification.md`). Compressed-audio
-conversion, nonzero-origin/proxy mapping, and human approval capture remain
+conversion, nonzero-origin/proxy mapping, and a general conversation-host adapter remains
 pending. Bounded zero-origin FCPXML export is described in `docs/fcpxml-export.md`.
 Signature-bound review verification exists with externally administered
 trust (`docs/approval-verification.md`).
@@ -73,3 +73,8 @@ Sequential cuts with SOURCE/MUTE audio describe the first intended exporter
 capability. Their presence in a valid plan does not mean that an exporter exists.
 Unsupported overlays, J/L-cuts, transitions, separate audio, VFR conversion, and
 mixed-FPS retiming remain out of scope until explicitly implemented and tested.
+
+Trusted callers can now pass observed explicit human conversation approval,
+bound to the exact plan job/revision/hash, without SSH setup. See
+`docs/approval-verification.md`. The caller owns authenticity; a saved HUMAN label
+or receipt alone is not execution authority. Optional signed verification remains.

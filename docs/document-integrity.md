@@ -99,14 +99,15 @@ current source hashes and supported decoded video counts/PTS/CFR; see
 `docs/media-verification.md`. `scripts/verify_edit.py` combines fresh scans with
 supported CFR frame/select bounds, sequential video timeline checks, and
 zero-origin PCM sample cuts (`docs/edit-verification.md`). Nonzero-origin/proxy
-mappings and human approval capture remain pending. Export has a separate bounded
+mappings and a general conversation-host adapter remains pending. Export has a separate bounded
 implementation in `docs/fcpxml-export.md`; actual Resolve import remains NOT_RUN. External-trust
 signature approval verification is a separate helper (`docs/approval-verification.md`).
 
 In particular, a forged approval with a correctly shaped digest or a mismatched
 but correctly shaped digest can pass this record checker. Signature approval
 binding and hash verification are implemented separately in `verify_approval.py`;
-human-controlled signing authority must be enrolled externally. Reported manifest
+a live trusted caller must observe genuine user approval, or an optional signing
+authority must be enrolled externally. Reported manifest
 duration/frame counts are inventory claims, not verified decoded media bounds.
 
 ## Testing
@@ -116,3 +117,8 @@ manual branches, immutability, duplicate IDs, job/request mismatches, missing
 dependencies/references, declared bounds, half-open scope unions, evidence gaps,
 story/edit/review links, schema-first behavior, strict parser/CLI failures, and
 explicit tests that pending gates remain unverified.
+
+Trusted callers can now pass observed explicit human conversation approval,
+bound to the exact plan job/revision/hash, without SSH setup. See
+`docs/approval-verification.md`. The caller owns authenticity; a saved HUMAN label
+or receipt alone is not execution authority. Optional signed verification remains.

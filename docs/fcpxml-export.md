@@ -24,8 +24,10 @@ and never fetches a DTD automatically.
 
 ## Execution command
 
-Obtain an actual human-reviewed, signed plan approval through the externally
-administered authority described in `docs/approval-verification.md` first.
+Obtain actual human approval of the exact plan through the trusted conversation
+workflow described in `docs/approval-verification.md`. A trusted caller invokes
+`export(paths, None, dtd_path, output, conversation_approval=event)` with that live
+approval. The standalone CLI below retains the optional independently signed path.
 Invoking the following command generates an export from the supplied job:
 
 ```bash
@@ -40,8 +42,8 @@ python scripts/export_fcpxml.py \
 
 When the plan references selects, also supply `--selects`, `--analysis`, and
 `--analysis-request`. Optional `--story-plan` is checked if supplied. Do not use
-synthetic approvals as actual authority. No real key enrollment, human approval
-capture, or real-media export was performed to develop this implementation.
+synthetic approvals as actual authority. Conversation approval needs no key enrollment. A job review JSON alone cannot
+authorize the API, and the CLI cannot replay a conversation receipt.
 
 The output must be a new external directory or `artifacts/<job_id>/<new-run>`.
 Repository `work/` is not an export destination. The command does not modify media
@@ -74,7 +76,7 @@ or job documents, invoke Resolve, upload data, or make editorial choices.
 ## Fresh execution boundary
 
 The exporter snapshots exact document/signature bytes into a private temporary
-run. It verifies the signed review, runs the live `verify_edit` decoder checks on
+run. It verifies the live conversation approval or optional signed review, runs the live `verify_edit` decoder checks on
 those same document bytes, and compares the approval/edit plan and review digests.
 It never consumes an arbitrary saved PASS report or exposes a gate-bypass flag.
 All inventory sources must pass the media scan, even unused sources.
@@ -84,12 +86,12 @@ checksum-pinned official DTD with system `/usr/bin/xmllint --nonet --dtdvalid`.
 The DTD is copied privately; unpinned DTDs are refused before parser execution.
 The system validator must pass the same root-ownership/path-write checks used by
 approval verification. Validation is bounded to 15 seconds. POSIX system tools,
-non-root execution, and the externally configured signing authority are required;
+non-root execution, and actual human approval are required;
 complete external-tool deployment pinning remains pending.
 
 Before creating output and again after copying evidence, immediately before XML
 publication, the exporter rechecks original document/signature/DTD bytes,
-reruns approval verification against current signing authority, and compares source
+reruns approval verification against the same live event or current signing authority, and compares source
 stat signatures with the fresh scan. These detect ordinary concurrent changes;
 they do not provide atomic storage snapshots or guarantee source identity after
 publication. Resolve relinking later requires the original sources to remain intact.
@@ -117,6 +119,6 @@ which is **NOT_RUN**, not proof of XML validation. The exporter itself always
 requires and validates the actual DTD.
 
 Actual Resolve import/relinking, cut positions, total duration, and SOURCE/MUTE
-playback must be checked in a separately authorized synthetic project. Human-key
-custody and genuine approval acceptance also remain unverified in deployment.
+playback must be checked in a separately authorized synthetic project. A general conversation-host adapter and optional human-key custody acceptance
+remain outside this implementation.
 Do not call all of M1 complete based on generated XML or synthetic signatures.

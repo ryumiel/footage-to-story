@@ -32,13 +32,15 @@ reported as execution blockers, not hidden behind a passing schema result.
   outstanding changes. An AI cannot self-approve by writing `reviewer_type: HUMAN`.
 
 The schema enforces record consistency, not authenticity or digest equality.
-`scripts/verify_approval.py` checks external-trust signatures and exact plan
-job/revision/digest bindings (`docs/approval-verification.md`). Human approval
-capture and deployment of human-controlled signing authority remain pending.
-The bounded exporter (`docs/fcpxml-export.md`) checks signed approval again at
-execution; XML validation does not establish Resolve acceptance.
-For that verifier, `reviewed_by` must be the registered signing principal.
-Never create a real HUMAN approval or signature on the user's behalf.
+`scripts/verify_approval.py` supports live trusted-conversation approval and
+optional independently verified signatures, both bound to exact plan job/revision/hash
+(`docs/approval-verification.md`). A trusted caller may record HUMAN/APPROVED
+only after observing the user's actual approval of the concrete displayed plan.
+Never fabricate a user approval or sign with the user's key. Registered signing
+principals and external key enrollment apply only to the optional SSH path.
+A general conversation-host adapter remains pending. The bounded exporter
+(`docs/fcpxml-export.md`) rechecks approval at execution; XML validation alone
+does not establish Resolve acceptance.
 
 ```bash
 python scripts/validate_json.py schemas/2.0.0/review.schema.json work/JOB/review.json
@@ -46,3 +48,8 @@ python scripts/validate_json.py schemas/2.0.0/review.schema.json work/JOB/review
 
 Return the review and distinguish schema results from checks actually performed.
 Store it with the private job, not as reusable source or a real-data test fixture.
+
+Trusted callers can now pass observed explicit human conversation approval,
+bound to the exact plan job/revision/hash, without SSH setup. See
+`docs/approval-verification.md`. The caller owns authenticity; a saved HUMAN label
+or receipt alone is not execution authority. Optional signed verification remains.

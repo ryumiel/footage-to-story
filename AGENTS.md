@@ -18,13 +18,15 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
 - Keep cross-file/media invariants separate from schemas. Declared-document checks,
   source-hash/decoded-video scans, and sequential video edit checks are implemented;
   zero-origin PCM sample cuts are implemented. Compressed-audio conversion,
-  nonzero-origin/proxy mapping, and authentic human approval capture are NOT implemented.
+  nonzero-origin/proxy mapping, and a general conversation-host approval adapter
+  are NOT implemented. Trusted callers may pass observed explicit user approval
+  bound to exact plan bytes; saved HUMAN labels alone never authorize execution.
   External-trust signature and exact plan approval-binding checks are implemented.
   Never treat schema or record conformance as proof of source validity or export readiness.
 - Use 0-based, OUT-exclusive ranges. Milliseconds locate analysis candidates;
   final source/timeline cuts use integer frame indices and rational FPS.
 - The human approves an exact plan revision and SHA-256 of the stored file bytes.
-  An agent must not fabricate or self-assert human approval. External-trust signature and hash
+  An agent must not fabricate or self-assert human approval. Trusted-conversation approval, optional signature, and hash
   verification are separate from human approval capture and export readiness.
 - Real media, transcripts, model responses, story bibles, plans, exports, logs,
   caches, credentials, and generated bundles do not belong in this Git repository.
@@ -40,6 +42,6 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
 - Test with `python -m pytest -q`. Put machine reports in ignored `artifacts/`.
   Report PASS, FAIL, NOT_RUN, and NOT_IMPLEMENTED separately.
 - No final FCPXML should be handwritten by a language model. Use the bounded
-  deterministic exporter only with fresh checks and externally trusted approval.
+  deterministic exporter only with fresh checks and genuine exact-plan human approval.
   Unsupported mappings and missing gates must block actual export. Resolve
   import acceptance remains NOT_RUN.

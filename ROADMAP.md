@@ -25,7 +25,8 @@
 - [x] Verify zero-origin contiguous PCM timing and exact SOURCE/MUTE sample cuts.
 - [ ] Implement nonzero-origin/source-proxy mappings and compressed-audio timing/conversion.
 - [x] Verify externally trusted review signatures, job/revision, and exact plan digest.
-- [ ] Deploy human-controlled signing authority and validate genuine approval capture.
+- [x] Accept observed explicit user approval through a trusted caller, bound to exact plan bytes.
+- [ ] Implement a general conversation-host adapter; optionally deploy human signing authority.
 - [x] Implement and test a bounded deterministic FCPXML 1.7 exporter with fresh execution gates.
 - [x] Generate real synthetic video/audio fixtures, not just JSON placeholders.
 - [x] Extend media fixtures to variable-rate, corrupted, and truncated sources for timing gates.

@@ -258,3 +258,37 @@ def test_actual_frame_orientation_side_data_blocks_geometry(tmp_path):
     assert any(side.get('rotation') == 90 for frame in probe['frames'] for side in frame.get('side_data_list', []))
     with pytest.raises(ValueError, match='side data'):
         ex.geometry(probe, report['sources'][0]['video']['stream_index'])
+
+
+def live_event(run):
+    plan = load_json(run[0]['edit-plan'])
+    review = load_json(run[0]['review'])
+    return approval.ConversationApproval(plan['job_id'], plan['revision'],
+                                        hashlib.sha256(run[0]['edit-plan'].read_bytes()).hexdigest(),
+                                        review['reviewed_by'], 'I approve', 'Synthetic host event only')
+
+
+def test_live_conversation_export_without_signing_policy(run, monkeypatch):
+    event = live_event(run)
+    monkeypatch.setattr(approval, '_trusted_bytes', lambda path: pytest.fail('No SSH trust policy needed'))
+    report = ex.export(run[0], None, run[2], run[3], conversation_approval=event)
+    assert report['approval']['approval_method'] == 'TRUSTED_CONVERSATION'
+    assert (run[3] / 'timeline.fcpxml').exists()
+
+
+def test_export_without_live_event_or_signature_is_blocked(run):
+    with pytest.raises(ValueError, match='Exactly one'):
+        ex.export(run[0], None, run[2], run[3])
+    assert not run[3].exists()
+
+
+def test_conversation_approved_plan_change_blocks_publication(run, monkeypatch):
+    event = live_event(run)
+    original = ex.validate_xml
+    def mutate(*args):
+        original(*args)
+        run[0]['edit-plan'].write_bytes(run[0]['edit-plan'].read_bytes() + b'\n')
+    monkeypatch.setattr(ex, 'validate_xml', mutate)
+    with pytest.raises(ValueError, match='changed'):
+        ex.export(run[0], None, run[2], run[3], conversation_approval=event)
+    assert not (run[3] / 'timeline.fcpxml').exists()

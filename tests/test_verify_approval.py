@@ -215,3 +215,41 @@ def test_admin_trust_path_checks_with_synthetic_metadata(tmp_path, monkeypatch, 
     else:
         with pytest.raises(ValueError, match='Unprotected'):
             gate._trusted_bytes(link)
+
+
+def conversation_event(signed):
+    plan = json.loads(signed[0].read_text())
+    review = json.loads(signed[1].read_text())
+    return gate.ConversationApproval(plan['job_id'], plan['revision'],
+                                     hashlib.sha256(signed[0].read_bytes()).hexdigest(),
+                                     review['reviewed_by'], 'I approve',
+                                     'Synthetic trusted user event; not real human approval')
+
+
+def test_trusted_conversation_binding_requires_no_keys(signed, monkeypatch):
+    monkeypatch.setattr(gate, '_trusted_bytes', lambda path: pytest.fail('Conversation approval must not read keys'))
+    report = gate.verify_conversation_approval(*signed[:2], conversation_event(signed))
+    assert report['status'] == 'PASS'
+    assert report['approval_method'] == 'TRUSTED_CONVERSATION'
+    assert 'saved records alone are not authorization' in report['authority_assumption']
+
+
+@pytest.mark.parametrize('field,value', [('job_id', 'other-job'), ('revision', 'other-r'),
+                                        ('plan_sha256', '0' * 64), ('reviewed_by', 'someone-else'),
+                                        ('user_message', 'I reject'), ('context_reference', '')])
+def test_conversation_event_does_not_repair_binding(signed, field, value):
+    from dataclasses import replace
+    event = replace(conversation_event(signed), **{field: value})
+    with pytest.raises(ValueError): gate.verify_conversation_approval(*signed[:2], event)
+
+
+def test_saved_record_is_not_live_authorization(signed):
+    from dataclasses import asdict
+    with pytest.raises(ValueError, match='Live trusted'):
+        gate.verify_conversation_approval(*signed[:2], asdict(conversation_event(signed)))
+
+
+def test_plan_changes_invalidate_conversation_approval(signed):
+    event = conversation_event(signed)
+    signed[0].write_bytes(signed[0].read_bytes() + b'\n')
+    with pytest.raises(ValueError): gate.verify_conversation_approval(*signed[:2], event)

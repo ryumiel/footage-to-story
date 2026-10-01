@@ -20,13 +20,13 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Bound source-byte checks and conservative decoded video timing scans for MOV/MP4 and WAV.
 - Fresh-media sequential video edit checks for source bounds, exact FPS, and timeline continuity.
 - Exact zero-origin PCM sample cuts and SOURCE/MUTE checks in the fresh edit gate.
-- External-trust OpenSSH review verification bound to exact plan bytes and revision.
+- Trusted-conversation approval bound to exact plan bytes/revision, with optional OpenSSH verification.
 - Bounded deterministic FCPXML 1.7 export with fresh gates and pinned official DTD validation.
 - Synthetic positive fixtures, negative tests, and explicit validation-boundary tests.
 - English instructions, migration guidance, architecture, and a design review.
 
-Compressed-audio timing/conversion, nonzero-origin/proxy maps, genuine
-approval capture, prior-lock verification, and live Gemini analysis remain unimplemented.
+Compressed-audio timing/conversion, nonzero-origin/proxy maps, a general
+conversation-host approval adapter, prior-lock verification, and live Gemini analysis remain unimplemented.
 A `SCHEMA_VALID` result is not approval to upload media or export a timeline.
 
 ## Responsibility split
@@ -57,7 +57,7 @@ scripts/probe_manifest.py   COMMIT: local reported inventory and evidence
 scripts/check_integrity.py  COMMIT: document relationships and declared bounds
 scripts/verify_media.py     COMMIT: source hashes and decoded video timing evidence
 scripts/verify_edit.py      COMMIT: live source bounds and sequential video timeline math
-scripts/verify_approval.py  COMMIT: external-trust signatures and exact plan approval binding
+scripts/verify_approval.py  COMMIT: live conversation/signature and exact plan approval binding
 scripts/export_fcpxml.py    COMMIT: gated deterministic FCPXML 1.7 serialization
 scripts/fetch_fcpxml_dtd.py COMMIT: explicit official DTD retrieval with checksum pin
 examples/contracts/        COMMIT: deliberately synthetic test documents

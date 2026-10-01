@@ -1,4 +1,4 @@
-"""Deterministic bounded FCPXML 1.7 export with fresh edit and signed approval gates."""
+"""Deterministic bounded FCPXML 1.7 export with fresh edit and exact-plan human approval gates."""
 from __future__ import annotations
 
 import argparse
@@ -18,14 +18,14 @@ try:
     from .fetch_fcpxml_dtd import DTD_SHA256
     from .probe_manifest import check_output_directory, file_signature, positive_integer
     from .validate_json import ROOT, load_json
-    from .verify_approval import _read, verify_approval, _trusted_bytes
+    from .verify_approval import _read, verify_approval, _trusted_bytes, verify_conversation_approval, ConversationApproval
     from .verify_edit import verify_edit
 except ImportError:
     from check_integrity import STAGES
     from fetch_fcpxml_dtd import DTD_SHA256
     from probe_manifest import check_output_directory, file_signature, positive_integer
     from validate_json import ROOT, load_json
-    from verify_approval import _read, verify_approval, _trusted_bytes
+    from verify_approval import _read, verify_approval, _trusted_bytes, verify_conversation_approval, ConversationApproval
     from verify_edit import verify_edit
 
 XMLLINT = Path('/usr/bin/xmllint')
@@ -122,12 +122,15 @@ def validate_xml(xml: bytes, dtd: bytes) -> None:
             raise ValueError('Generated XML failed official DTD validation')
 
 
-def export(paths: dict[str, Path], signature: Path, dtd_path: Path, output: Path) -> dict:
+def export(paths: dict[str, Path], signature: Path | None, dtd_path: Path, output: Path,
+           *, conversation_approval: ConversationApproval | None = None) -> dict:
     output = check_output_directory(output)
     if not {'manifest', 'edit-plan', 'review'} <= paths.keys() or paths.keys() - set(STAGES):
         raise ValueError('Manifest, edit plan, review, and known stages required')
     raw = {stage: _read(path) for stage, path in paths.items()}
-    signature_raw, dtd = _read(signature), _read(dtd_path)
+    if (signature is None) == (conversation_approval is None):
+        raise ValueError('Exactly one signed or live conversation approval is required')
+    signature_raw, dtd = _read(signature) if signature else None, _read(dtd_path)
     with tempfile.TemporaryDirectory(prefix='footage-export-') as temporary:
         directory = Path(temporary)
         frozen = {}
@@ -135,8 +138,13 @@ def export(paths: dict[str, Path], signature: Path, dtd_path: Path, output: Path
             frozen[stage] = directory / f'{stage}.json'
             frozen[stage].write_bytes(data)
         sig_path = directory / 'review.sig'
-        sig_path.write_bytes(signature_raw)
-        approval = verify_approval(frozen['edit-plan'], frozen['review'], sig_path)
+        if signature_raw is not None:
+            sig_path.write_bytes(signature_raw)
+        def check_approval():
+            if conversation_approval is not None:
+                return verify_conversation_approval(frozen['edit-plan'], frozen['review'], conversation_approval)
+            return verify_approval(frozen['edit-plan'], frozen['review'], sig_path)
+        approval = check_approval()
         if output.is_relative_to(ROOT):
             parts = output.relative_to(ROOT).parts
             if len(parts) < 3 or parts[:2] != ('artifacts', approval['job_id']):
@@ -155,9 +163,9 @@ def export(paths: dict[str, Path], signature: Path, dtd_path: Path, output: Path
         validate_xml(xml, dtd)
         def publication_guard():
             # Run both before output creation and after potentially long copying.
-            if any(_read(paths[stage]) != data for stage, data in raw.items()) or _read(signature) != signature_raw or _read(dtd_path) != dtd:
+            if any(_read(paths[stage]) != data for stage, data in raw.items()) or (signature is not None and _read(signature) != signature_raw) or _read(dtd_path) != dtd:
                 raise ValueError('Export inputs changed during execution')
-            if verify_approval(frozen['edit-plan'], frozen['review'], sig_path) != approval:
+            if check_approval() != approval:
                 raise ValueError('Signing authority changed during execution')
             for number, source in enumerate(media['sources'], 1):
                 provenance = load_json(media_dir / f'decode-{number:04d}-provenance.json')

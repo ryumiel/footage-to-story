@@ -108,7 +108,7 @@ current hashes, decoded counts, and exact video PTS/CFR (`docs/media-verificatio
 exact select-window containment, matching FPS, and sequential video timeline math
 and zero-origin PCM sample cuts (`docs/edit-verification.md`). Compressed-audio
 conversion, nonzero-origin/proxy maps, prior locks,
-and human approval capture remain unimplemented. External-trust signature and
+and a general conversation-host adapter remains unimplemented. External-trust signature and
 exact plan approval-binding checks exist separately (`docs/approval-verification.md`).
 
 Keep these as small application invariants as M1 develops; do not build
@@ -143,3 +143,8 @@ Keep contract validation, domain/media checks, approval authenticity, XML valida
 and actual Resolve import as separately reported results.
 
 See `docs/references.md` for the standard and library documentation used here.
+
+Trusted callers can now pass observed explicit human conversation approval,
+bound to the exact plan job/revision/hash, without SSH setup. See
+`docs/approval-verification.md`. The caller owns authenticity; a saved HUMAN label
+or receipt alone is not execution authority. Optional signed verification remains.

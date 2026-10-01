@@ -12,8 +12,8 @@ Current input contracts live in `schemas/2.0.0/`.
 ## Present implementation status
 
 **Document, fresh-media, sequential-video, and zero-origin PCM cut checks exist.
-External-trust signature and exact plan approval-binding checks exist; human
-approval capture remains pending. A bounded deterministic FCPXML 1.7 exporter
+External-trust signature and exact plan approval-binding checks exist; a general
+conversation-host adapter remains pending. A bounded deterministic FCPXML 1.7 exporter
 and official DTD validation exist (`docs/fcpxml-export.md`).** Actual Resolve import
 acceptance is NOT_RUN; do not claim application compatibility from XML validation.
 
@@ -38,3 +38,8 @@ Keep originals read-only and put outputs under ignored `artifacts/<job_id>/`.
 Distinguish NOT_IMPLEMENTED, NOT_RUN, BLOCKED, PASS, and FAIL for each gate. XML
 structure passing does not prove clip relinking, cuts, audio synchronization, or
 Resolve compatibility. Only report outputs that were actually created and checked.
+
+Trusted callers can now pass observed explicit human conversation approval,
+bound to the exact plan job/revision/hash, without SSH setup. See
+`docs/approval-verification.md`. The caller owns authenticity; a saved HUMAN label
+or receipt alone is not execution authority. Optional signed verification remains.

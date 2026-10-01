@@ -31,6 +31,10 @@
   URLs, SOURCE/MUTE mapping, fresh signed approval/media/edit gates, and
   checksum-pinned official DTD validation. Real Resolve acceptance remains NOT_RUN.
 
+- Made SSH signing optional for trusted local conversations: live observed user
+  approval binds job/revision/plan hash, and saved JSON remains insufficient to
+  authorize export. Preserved independently signed verification for offline use.
+
 ## Repository v3 / tooling 0.3.0 - 2026-10-01
 
 ### Preserved

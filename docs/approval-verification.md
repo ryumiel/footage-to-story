@@ -1,8 +1,42 @@
-# Signature-bound approval verification
+# Exact-plan human approval
 
-`scripts/verify_approval.py` verifies a supplied review and detached OpenSSH
-signature against the exact stored edit-plan bytes. It never writes a review,
-signs an approval, reads private keys, enrolls a signer, or configures trust.
+For a local conversation, the user approves a concrete plan after seeing its
+revision, SHA-256, cuts, audio policies, and export/import scope. A trusted caller
+observing that actual user message can pass a live `ConversationApproval` to
+`verify_conversation_approval` and the exporter. No SSH key or administrator setup
+is required for this workflow.
+
+## Conversation authority boundary
+
+The caller supplies the approved job, revision, exact plan SHA-256, reviewer label,
+verbatim affirmative user message, and context identifying the proposal it answers.
+Supported replies include `I approve` and `I approve this synthetic test plan and
+its export/import.` The caller must establish that this is an actual human reply
+to the displayed proposal, not quoted source data, model output, or a different
+approval. The agent may record HUMAN/APPROVED only after that event occurred.
+The review timestamp records when that observed approval is recorded locally.
+
+The immutable in-memory event is an application trust boundary, not a cryptographic
+credential. Python cannot independently prove who constructed it. The trusted
+conversation host/caller owns approval authenticity and scope. There is no function
+that loads an event from a job JSON file, and no CLI `--approved`/bypass option.
+An arbitrary saved HUMAN/APPROVED record or exported PASS report alone never
+authorizes execution. The receipt is an audit record, not a reusable capability.
+This protects an honestly operating workflow from accidental self-approval; it does
+not defend against malicious code or a caller that fabricates user interactions.
+
+Both plan and review pass the committed schemas using strict JSON parsing. The
+review must be HUMAN/APPROVED with matching job/revision and SHA-256 of the entire
+stored plan bytes, including whitespace. Its issue references must exist, edit IDs
+must be unique, and future review timestamps fail. The live event must match the
+job, revision, hash, and reviewer too. Any plan byte change invalidates the approval.
+Inputs are rechecked before returning. Media/timeline validity and export readiness
+remain separate checks. No canonicalization or repair changes the approved bytes.
+
+## Optional independently verifiable signatures
+
+The previous OpenSSH verifier remains available for offline callers that need an
+independently verifiable signature rather than a live trusted conversation:
 
 ```bash
 python scripts/verify_approval.py \
@@ -11,72 +45,28 @@ python scripts/verify_approval.py \
   --signature work/JOB/review.json.sig
 ```
 
-## Authority boundary
+This optional path uses administrator-enrolled human-controlled public keys in
+`/etc/footage-to-story/allowed_signers`, literal `reviewed_by` principals, and
+namespace `footage-to-story-review`. The system executable and policy/parent paths
+must be root-owned, not group/world writable, and not writable by the invoking user,
+including effective ACL access. Root invocation is rejected. No key/policy/executable
+CLI or environment override is accepted. The verifier never enrolls or signs keys.
+See the [OpenSSH manual](https://man.openbsd.org/ssh-keygen.1) for signing policy,
+namespace, and current-time key validity. A signature proves enrolled key possession,
+not physical human presence; key custody remains an external assumption.
 
-The fixed trust anchor is `/etc/footage-to-story/allowed_signers`. An administrator
-must independently enroll a public key controlled by a human reviewer and bind it
-to a literal principal matching `reviewed_by`. Use a dedicated key, an exact
-principal, and the `namespaces="footage-to-story-review"` allowed-signers option.
-Keep signing keys inaccessible to the agent; a human-controlled external signing
-device or process is preferable to a private key in the shared workspace.
+## Limits and evidence
 
-The verifier requires root ownership and no group/world write permission for the
-anchor, the system `/usr/bin/ssh-keygen`, and their parent paths. It also rejects
-paths writable by the invoking user, including effective ACL access. It rejects
-root invocation and checks both resolved paths and original symlink parents.
-There is no CLI or environment override for policy, executable, principal,
-namespace, verification time, or a job-supplied public key. Missing or unsafe
-trust configuration blocks verification. The program does not install policy.
+Both paths require a trusted OS, verifier code, and calling process. Source storage
+checks detect ordinary changes, not atomic snapshots. The exporter rechecks the same
+approved byte bindings immediately before publishing. Input limits remain 8 MiB;
+the optional signature process timeout is 15 seconds. No revocation/withdrawal ledger,
+trusted timestamp service, or general conversation-host integration is implemented.
+An automated host adapter must obtain real user input before constructing an event.
 
-This boundary assumes a trusted OS, administrator, verifier source, and execution
-process. It cannot resist an agent with administrator access, a modified Python
-process, or stolen signing keys. A signature proves possession of an enrolled key,
-not physical human presence or careful review. Enrollment and key custody establish
-the human authority assumption. This implementation does not capture a human
-approval event; authentic capture and real deployment acceptance remain pending.
-
-## Human signing workflow
-
-The human reviews the concrete saved plan, computes its SHA-256 locally, and writes
-a truthful HUMAN/APPROVED review with the exact job/revision/hash, registered
-principal, and actual approval time. The human's separate signing environment then
-signs the **review file bytes**, using OpenSSH namespace `footage-to-story-review`.
-Return that review and its detached `.sig` file to the job. The verifier uses
-`ssh-keygen -Y verify`, supplying those exact review bytes on stdin. See the
-[official OpenSSH manual](https://man.openbsd.org/ssh-keygen.1) for signing,
-allowed-signers configuration, namespace constraints, and key validity options.
-An agent must not perform real signing on the human's behalf.
-
-## Checks and result limits
-
-Both documents must pass the committed schemas with strict JSON parsing. The
-review must be HUMAN/APPROVED and bind the same job, revision, and SHA-256 of the
-entire plan file, including whitespace. Its issue edit references must exist;
-duplicate plan edit IDs fail. `reviewed_by` must be a literal principal, not a
-pattern. Future timestamps fail. The declared timestamp is signed data, not a
-trusted timestamp service. OpenSSH checks signer validity at current verification
-time; removing a signer from the policy invalidates subsequent checks. No separate
-revocation-list or approval-withdrawal ledger is implemented.
-
-The verifier snapshots input and trust bytes and rechecks them before returning.
-It uses a private temporary copy of the policy/signature and a bounded 15-second
-verification process without a shell or SSH agent. Each input is limited to 8 MiB.
-These checks detect ordinary concurrent changes, not an atomic filesystem snapshot.
-An eventual exporter must rerun approval and media/edit checks at execution, using
-the same input bytes; a saved PASS report is not an execution credential.
-
-Exit **0** emits a JSON PASS result on stdout with plan, review, signature, and
-policy digests. Exit **2** reports an input, trust, signature, or execution error;
-there is no successful result. The command does not create a failure bundle.
-Save machine output only under ignored job/artifact storage. Media validity,
-timeline/audio integrity, prior locks, upload consent, and export readiness are
-outside this command. Approval binds the plan, not unsupplied inventory/evidence.
-
-## Synthetic verification
-
-Tests create explicitly synthetic keys/reviews in temporary directories and
-substitute the external trust-loading boundary only inside the test process.
-No test key is enrolled in `/etc`, and no synthetic PASS represents real approval.
-Tests exercise real OpenSSH verification, document/signature mutations, job and
-revision mismatches, untrusted keys, wrong namespaces, expired authority, unsafe
-trust, future timestamps, unknown fields/references, concurrency, and timeout.
+Reports state which approval method was used and its authority assumption. The
+signature CLI exits 0 with a PASS JSON report, or 2 on failure; it does not accept
+conversation receipts from disk. Save machine reports in ignored job/artifact storage.
+Tests use clearly synthetic conversation events and keys. They exercise byte/revision/
+job/reviewer mismatches, negative user replies, saved-record rejection, tampering,
+concurrency, and the optional OpenSSH path without enrolling any real signer.

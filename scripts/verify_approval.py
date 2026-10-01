@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from pathlib import Path
 
 try:
@@ -65,21 +66,31 @@ def _document(raw: bytes, stage: str) -> dict:
     return document
 
 
-def verify_approval(plan_path: Path, review_path: Path, signature_path: Path) -> dict:
-    """Verify stored bytes; never create approvals, keys, signatures, or trust policy."""
-    paths = [plan_path, review_path, signature_path]
-    raw = [_read(path) for path in paths]
-    plan, review = _document(raw[0], 'edit-plan'), _document(raw[1], 'review')
-    digest = hashlib.sha256(raw[0]).hexdigest()
+
+@dataclass(frozen=True)
+class ConversationApproval:
+    """Live authorization supplied by a trusted caller observing actual user input.
+
+    This is not a cryptographic credential. Never construct it from a job file,
+    model-generated approval, or saved PASS report. The caller owns authenticity.
+    """
+    job_id: str
+    revision: str
+    plan_sha256: str
+    reviewed_by: str
+    user_message: str
+    context_reference: str
+
+
+def approval_binding(plan_bytes: bytes, review_bytes: bytes) -> tuple[dict, dict, str]:
+    plan, review = _document(plan_bytes, 'edit-plan'), _document(review_bytes, 'review')
+    digest = hashlib.sha256(plan_bytes).hexdigest()
     if review['reviewer_type'] != 'HUMAN' or review['status'] != 'APPROVED':
         raise ValueError('A HUMAN APPROVED review is required')
     if review['job_id'] != plan['job_id'] or review['edit_plan_revision'] != plan['revision']:
         raise ValueError('Approval job/revision mismatch')
     if review['edit_plan_sha256'] != digest:
         raise ValueError('Approval does not bind the exact stored plan bytes')
-    principal = review['reviewed_by']
-    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.@+-]{0,254}', principal):
-        raise ValueError('reviewed_by must be a literal registered signing principal')
     if datetime.fromisoformat(review['reviewed_at'].upper().replace('Z', '+00:00')) > datetime.now(timezone.utc):
         raise ValueError('Approval timestamp is in the future')
     edit_ids = [item['edit_id'] for item in plan['items']]
@@ -87,6 +98,43 @@ def verify_approval(plan_path: Path, review_path: Path, signature_path: Path) ->
         raise ValueError('Duplicate edit IDs')
     if any(issue.get('edit_id') is not None and issue['edit_id'] not in edit_ids for issue in review['issues']):
         raise ValueError('Review references an unknown edit ID')
+    return plan, review, digest
+
+
+def verify_conversation_approval(plan_path: Path, review_path: Path,
+                                 event: ConversationApproval) -> dict:
+    if not isinstance(event, ConversationApproval):
+        raise ValueError('Live trusted conversation approval is required')
+    raw = [_read(plan_path), _read(review_path)]
+    plan, review, digest = approval_binding(*raw)
+    if (event.job_id, event.revision, event.plan_sha256, event.reviewed_by) != (
+            plan['job_id'], plan['revision'], digest, review['reviewed_by']):
+        raise ValueError('Conversation approval job/revision/hash/reviewer mismatch')
+    if event.user_message.strip().casefold().rstrip('.') not in {
+            'i approve', 'i approve this plan and its export/import',
+            'i approve this synthetic test plan and its export/import'}:
+        raise ValueError('Explicit affirmative user approval is required')
+    if not event.context_reference.strip():
+        raise ValueError('Actual approval context must be recorded')
+    if _read(plan_path) != raw[0] or _read(review_path) != raw[1]:
+        raise ValueError('Approval inputs changed during verification')
+    return {'status': 'PASS', 'job_id': plan['job_id'], 'revision': plan['revision'],
+            'edit_plan_sha256': digest, 'review_sha256': hashlib.sha256(raw[1]).hexdigest(),
+            'approval_method': 'TRUSTED_CONVERSATION', 'reviewed_by': event.reviewed_by,
+            'user_message': event.user_message, 'context_reference': event.context_reference,
+            'authority_assumption': 'Trusted caller observed explicit human approval of this exact plan; saved records alone are not authorization',
+            'not_checked': ['independent cryptographic identity', 'media validity',
+                            'timeline/audio integrity', 'prior locks', 'export readiness']}
+
+
+def verify_approval(plan_path: Path, review_path: Path, signature_path: Path) -> dict:
+    """Verify stored bytes; never create approvals, keys, signatures, or trust policy."""
+    paths = [plan_path, review_path, signature_path]
+    raw = [_read(path) for path in paths]
+    plan, review, digest = approval_binding(raw[0], raw[1])
+    principal = review['reviewed_by']
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.@+-]{0,254}', principal):
+        raise ValueError('reviewed_by must be a literal registered signing principal')
     policy = _trusted_bytes(TRUST_FILE)
     executable = _trusted_bytes(SSH_KEYGEN)
     with tempfile.TemporaryDirectory(prefix='footage-approval-') as temporary:
