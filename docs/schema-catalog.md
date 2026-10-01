@@ -35,7 +35,9 @@ unknown duration/count can be inventoried but must not be exported without evide
 
 `proxy_path` identifies an optional full-length analysis proxy only. Any cropping,
 concatenation, speed change, or uncertain synchronization requires a separately
-verified mapping before timestamps can be used; that mapping is not implemented.
+verified mapping before timestamps can be used. General proxy mapping is not
+implemented. M3 supports only its freshly verified zero-origin speech extracts;
+see `antigravity-analysis.md`.
 
 ### Analysis request and observations
 
@@ -45,7 +47,8 @@ bounded. `authorization_ref` points to a real user permission record outside the
 source repository; its existence/authenticity is not established by this validator.
 
 `summary` and `audible_content` are descriptions of what was heard. They are not a
-canonical verbatim transcript. A full transcript/provenance contract is future work.
+canonical verified verbatim transcript. Supplied SRT transcripts and local import
+provenance have separate auxiliary contracts; see `editorial-import.md`.
 `evidence` strings describe the actual source basis; they must not claim a file was
 watched when it was not. Segment IDs remain stable within the combined job analysis.
 
@@ -53,6 +56,16 @@ An empty `segments` array means an actual analysis completed with no usable
 findings. It must not disguise missing media, unavailable video capability, or a
 failed provider call; those cases are operationally BLOCKED and produce no invented
 analysis artifact.
+
+### Antigravity provider response
+
+`agy-response.schema.json` is a strict auxiliary provider-format contract, not a
+canonical stage document. Its candidate ranges are local to one bounded clip.
+It requires audio availability, speech observations with evidence/confidence, and
+warnings. Unknown fields fail. The trusted runner binds source/job/request IDs
+from verified inputs and normalizes offsets before canonical analysis validation.
+Schema validity is not semantic validation of words or evidence; human quotation
+and candidate speech-boundary verification remain NOT_RUN.
 
 ### Selects and story
 

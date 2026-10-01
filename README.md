@@ -12,7 +12,7 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Eight committed project-local skills in `.agents/skills/`; no skill-copy or
   installation script is needed for repository-local use.
 - The four editorial profiles from v2, unchanged in meaning and values.
-- Seven strict stage contracts plus a shared `$defs` resource and separate M2 auxiliary contracts.
+- Seven strict stage contracts plus a shared `$defs` resource and separate M2/M3 auxiliary contracts.
 - Offline JSON Schema validation using `jsonschema` and `referencing`.
 - Reviewed Python runtime/test resolution in `uv.lock`.
 - Local ffprobe manifest extraction with exact-byte hashes and raw metadata evidence.
@@ -27,13 +27,16 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Historical human lock preservation through a trusted caller, with fresh export checks.
 - Immutable local job records and dependency inspection/resume without automatic editorial execution.
 - Rational subtitle sidecar mapping with fresh video checks, including compressed source audio.
+- Bounded speech analysis through Antigravity `agy`, with verified local clip staging,
+  exact-request upload consent, native tool confinement, limits, and raw provenance.
 - Synthetic positive fixtures, negative tests, and explicit validation-boundary tests.
 - English instructions, migration guidance, architecture, and a design review.
 
-Compressed-audio timing/conversion, nonzero-origin/proxy maps, a general
-conversation-host approval adapter and reusable Gemini analysis adapter remain
-unimplemented. Manual bounded `agy` speech ingestion and canonical observation
-import have passed; quotation accuracy and provider speech timing remain unverified.
+Compressed-audio final-export timing/conversion, general nonzero-origin/proxy maps,
+and a general conversation-host approval adapter remain unimplemented. The Gemini
+adapter supports bounded speech-only zero-origin clips; general sound/visual analysis
+and a hard provider billing ceiling remain unsupported. Quotation accuracy and
+provider speech timing remain unverified.
 A `SCHEMA_VALID` result is not approval to upload media or export a timeline.
 
 ## Responsibility split
@@ -61,6 +64,9 @@ profiles/                   COMMIT: editorial preferences
 schemas/2.0.0/              COMMIT: seven contracts + common definitions
 scripts/validate_json.py    COMMIT: standard-library integration and CLI
 scripts/probe_manifest.py   COMMIT: local reported inventory and evidence
+scripts/stage_analysis_media.py COMMIT: bounded verified speech clip extraction
+scripts/analyze_with_agy.py COMMIT: trusted-caller Antigravity speech analysis
+scripts/agy_guard.py        COMMIT: single-read native tool permission gate
 scripts/check_integrity.py  COMMIT: document relationships and declared bounds
 scripts/verify_media.py     COMMIT: source hashes and decoded video timing evidence
 scripts/verify_edit.py      COMMIT: live source bounds and sequential video timeline math
@@ -145,6 +151,7 @@ Legacy v2-repository documents are not silently accepted or migrated. See
 - `docs/fcpxml-export.md`: supported export mapping, official validation, and acceptance limits.
 - `docs/profile-resolution.md`: deterministic profile inheritance and reuse bindings.
 - `docs/editorial-import.md`: supplied observations/SRT and raw provenance.
+- `docs/antigravity-analysis.md`: bounded speech adapter, consent, tool gates, and limits.
 - `docs/lock-preservation.md`: authentic historical locks and export integration.
 - `docs/job-state.md`: local stage records, freshness, and resume inspection.
 - `docs/subtitle-mapping.md`: exact cut mapping and generated SRT sidecars.

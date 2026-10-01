@@ -23,7 +23,7 @@
 - [x] Verify edit bounds against fresh decoded media and zero-origin CFR select-time windows.
 - [x] Check exact sequential video timeline continuity, frame counts, FPS, and duration.
 - [x] Verify zero-origin contiguous PCM timing and exact SOURCE/MUTE sample cuts.
-- [ ] Implement nonzero-origin/source-proxy mappings and compressed-audio timing/conversion.
+- [ ] Implement general nonzero-origin/source-proxy mappings and compressed-audio final-export timing/conversion.
 - [x] Verify externally trusted review signatures, job/revision, and exact plan digest.
 - [x] Accept observed explicit user approval through a trusted caller, bound to exact plan bytes.
 - [ ] Implement a general conversation-host adapter; optionally deploy human signing authority.
@@ -56,15 +56,27 @@
 
 ## M3 - Antigravity/Gemini media-analysis adapter
 
-Manual `agy` tests established coarse visual observation and speech ingestion.
-Non-speech audio controls failed. These tests do not implement a reusable adapter,
-general proxy mapping, or verified speech boundaries.
+Completed for the bounded speech-only adapter on zero-origin CFR originals.
+Manual tests established coarse visual ingestion; general visual analysis and
+non-speech sound descriptions are outside this adapter. Non-speech controls failed.
+See [adapter scope and limits](docs/antigravity-analysis.md).
 
-- [ ] Verify actual video/audio ingestion and timestamp behavior in the target runtime.
-- [ ] Enforce tool-level permissions, bounded media access, and recorded upload consent.
-- [ ] Implement provider-specific request/response handling without changing canonical contracts.
-- [ ] Validate provider output locally and reject unsupported or fabricated fields.
-- [ ] Add cost limits, retries, privacy controls, and bounded reanalysis.
+- [x] Verify actual video/audio ingestion and timestamp behavior in the target runtime.
+  The reusable adapter ingested two authorized compressed speech clips, normalized
+  four observations to verified source origins, and imported canonical analysis
+  with raw provenance. Candidate speech timing and quotation accuracy remain NOT_RUN.
+- [x] Enforce tool-level permissions, bounded media access, and recorded upload consent.
+  Trusted-caller consent binds exact inputs; a sole enabled hook permits one
+  hash-bound native media read and one validated output-only completion per attempt.
+- [x] Implement provider-specific request/response handling without changing canonical contracts.
+- [x] Validate provider output locally and reject unsupported or fabricated fields.
+  Unknown fields, identities, invalid bounds, malformed transport, and mismatched
+  completion payloads fail. Schema conformance does not detect invented speech.
+- [x] Add cost limits, retries, privacy controls, and bounded reanalysis.
+  Calls, attached duration, observed usage, output size, and process time are bounded;
+  failed attempts are preserved and unknown usage forbids retry. Source metadata is
+  stripped. A hard provider monetary ceiling remains NOT_IMPLEMENTED; provider
+  retention is outside the adapter's control.
 
 Do not implement all milestones before testing the simple non-AI export path.
-This revision does not imply that M1-M3 have been executed or verified.
+Unchecked M1 capabilities and explicitly deferred human verification remain open.

@@ -17,8 +17,8 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
   Never repair a contract by inventing source IDs, evidence, dates, or permissions.
 - Keep cross-file/media invariants separate from schemas. Declared-document checks,
   source-hash/decoded-video scans, and sequential video edit checks are implemented;
-  zero-origin PCM sample cuts are implemented. Compressed-audio conversion,
-  nonzero-origin/proxy mapping, and a general conversation-host approval adapter
+  zero-origin PCM sample cuts are implemented. Compressed-audio final-export conversion,
+  general nonzero-origin/proxy mapping, and a general conversation-host approval adapter
   are NOT implemented. Trusted callers may pass observed explicit user approval
   bound to exact plan bytes; saved HUMAN labels alone never authorize execution.
   External-trust signature and exact plan approval-binding checks are implemented.
@@ -27,6 +27,11 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
   Subtitle timing accepts original compressed audio and leaves audio-cut verification NOT_RUN.
   Preserve compressed originals; do not create persistent PCM solely for subtitle checks.
   Saved lock records require trusted historical context; resume never authorizes execution.
+  Bounded zero-origin speech extraction and the Antigravity agy adapter are implemented.
+  Upload execution requires trusted-caller observed consent bound to exact input bytes,
+  the sole enabled clip hook, and one native media read per budgeted attempt.
+  Provider speech boundaries and quotation accuracy remain NOT_RUN; non-speech
+  descriptions are unsupported. Dispatch/observed-token limits are not hard billing caps.
   Never treat schema or record conformance as proof of source validity or export readiness.
 - Use 0-based, OUT-exclusive ranges. Milliseconds locate analysis candidates;
   final source/timeline cuts use integer frame indices and rational FPS.

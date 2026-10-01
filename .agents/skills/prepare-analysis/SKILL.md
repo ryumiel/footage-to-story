@@ -25,6 +25,9 @@ questions but is not evidence that a shot or spoken line exists.
    transmission. For true, include a real `authorization_ref`; never invent one.
 5. Ask for observations, audible/visible content, uncertainty, and candidate times.
    Do not ask the analyzer to choose final selects, pacing, or narrative order.
+   For the implemented `agy` runner, use speech/dialogue or `audible_dialogue`
+   categories and exact frame/sample-aligned ranges on verified zero-origin CFR
+   sources. Other analysis categories require a separately supported capability.
 6. Retain known facts, notes, and hypotheses as context, not manufactured observations.
 7. Write the request and run the existing validator:
 
