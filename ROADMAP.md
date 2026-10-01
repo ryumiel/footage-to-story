@@ -22,7 +22,8 @@
 - [x] Bind supported local source scans to file hashes and check decoded video counts, PTS, and CFR.
 - [x] Verify edit bounds against fresh decoded media and zero-origin CFR select-time windows.
 - [x] Check exact sequential video timeline continuity, frame counts, FPS, and duration.
-- [ ] Implement nonzero-origin/source-proxy mappings and verify audio synchronization/sample cuts.
+- [x] Verify zero-origin contiguous PCM timing and exact SOURCE/MUTE sample cuts.
+- [ ] Implement nonzero-origin/source-proxy mappings and compressed-audio timing/conversion.
 - [ ] Capture authentic human approval and verify revision plus exact plan digest.
 - [ ] Implement and test a deterministic FCPXML exporter.
 - [x] Generate real synthetic video/audio fixtures, not just JSON placeholders.

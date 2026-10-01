@@ -19,10 +19,11 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Cross-document record checks for IDs, references, ranges, and declared bounds/scope.
 - Bound source-byte checks and conservative decoded video timing scans for MOV/MP4 and WAV.
 - Fresh-media sequential video edit checks for source bounds, exact FPS, and timeline continuity.
+- Exact zero-origin PCM sample cuts and SOURCE/MUTE checks in the fresh edit gate.
 - Synthetic positive fixtures, negative tests, and explicit validation-boundary tests.
 - English instructions, migration guidance, architecture, and a design review.
 
-Audio timing verification, nonzero-origin/proxy maps, FCPXML export, genuine
+Compressed-audio timing/conversion, nonzero-origin/proxy maps, FCPXML export, genuine
 approval capture, prior-lock verification, and live Gemini analysis remain unimplemented.
 A `SCHEMA_VALID` result is not approval to upload media or export a timeline.
 
@@ -33,7 +34,7 @@ A `SCHEMA_VALID` result is not approval to upload media or export a timeline.
 | ChatGPT | Analysis requests, selects, narrative, edit plans, editorial review |
 | Codex | Local development and explicitly delegated ChatGPT/user-side execution |
 | Antigravity + Gemini | Observe approved media and return analysis; no independent editorial decisions |
-| Deterministic code | Schema, inventory, document, source/video, and sequential video-edit checks now; audio/approval/export gates later |
+| Deterministic code | Schema, inventory, document, source/video, and sequential video-edit checks now; PCM sample cuts now; approval/export gates later |
 | Human editor | Confirm facts, authorize uploads, approve exact plans, finish in Resolve |
 
 The same committed skills can be read by local agents. Visibility is not an access

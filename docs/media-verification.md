@@ -73,15 +73,19 @@ returned. Frame count mismatches can also reveal silent incomplete decodes.
 ## Audio and remaining gates
 
 Audio evidence records decoded audio frame/sample counts and compares reported
-stream sample rate/channels with any inventory claims. It does not verify per-frame
-audio format stability, audio timestamps, priming/trimming, duration, or
-synchronization. An audio-only PASS covers file identity, decoded sample presence,
-and reported format comparisons; no video timing test applies.
+stream sample rate/channels with inventory claims. A separate `audio.timing`
+result checks zero-origin contiguous PCM timestamps, sample-count durations,
+stable decoded channels/sample format, and absence of padding or side data.
+Unsupported or failing audio timing does not itself fail the general media scan:
+a MUTE edit can discard that audio. A general media PASS therefore does not prove
+SOURCE audio readiness. Audio-only PASS covers identity, decoded sample presence,
+and reported format comparisons; inspect the separate timing result for PCM.
 
 The scanner does not consume an edit plan, verify edit cut bounds, convert select
 milliseconds into frames, check timeline continuity, or verify audio alignment.
 `scripts/verify_edit.py` now reruns the scan and checks supported CFR cut bounds,
-select-window containment, and sequential video math (`docs/edit-verification.md`).
+select-window containment, sequential video math, and retained SOURCE PCM sample cuts
+(`docs/edit-verification.md`).
 Document references are checked separately by `scripts/check_integrity.py`.
 Proxy maps, prior locks, permission authenticity, authentic human approval and
 plan-digest verification, XML export, and actual Resolve import remain separate

@@ -28,8 +28,9 @@ still needs genuine source identity and frame-boundary evidence.
    use null/omission only for an intentional manual plan with separately verified evidence.
 6. Calculate, rather than duplicate, duration from OUT minus IN. Check source bounds,
    timeline continuity, FPS, and audio assumptions before claiming readiness.
-   `docs/edit-verification.md` describes implemented fresh-media video checks;
-   audio synchronization, authentic approval, and export remain separate gates.
+   `docs/edit-verification.md` describes implemented fresh-media video and exact
+   zero-origin PCM SOURCE/MUTE checks. Compressed-audio conversion, authentic
+   approval, and export remain separate gates.
    Use the implemented checks within their documented scope; passing video
    checks alone does not establish audio synchronization or export readiness.
 7. If a necessary boundary is unknown, report BLOCKED or a non-executable note;

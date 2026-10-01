@@ -19,11 +19,13 @@ try:
     from .probe_manifest import MAX_INTEGER, check_output_directory, file_signature
     from .validate_json import _unique_object, _reject_constant
     from .verify_media import rational, verify_media
+    from .audio_timing import sample_cut
 except ImportError:
     from check_integrity import STAGES, IntegrityIssue, check_documents
     from probe_manifest import MAX_INTEGER, check_output_directory, file_signature
     from validate_json import _unique_object, _reject_constant
     from verify_media import rational, verify_media
+    from audio_timing import sample_cut
 
 
 def analyze_edit(documents: dict, media: dict) -> dict:
@@ -38,7 +40,7 @@ def analyze_edit(documents: dict, media: dict) -> dict:
     result = {"status": "FAIL" if issues else "PASS", "items": [],
               "timeline_frame_count": None, "timeline_duration_seconds": None,
               "issues": [vars(issue) for issue in issues],
-              "not_checked": ["audio timing/synchronization", "proxy mappings", "prior locks",
+              "not_checked": ["compressed-audio priming/resampling", "proxy mappings", "prior locks",
                               "permission authenticity", "approval digest/authenticity", "export"]}
     if issues:
         return result
@@ -57,6 +59,7 @@ def analyze_edit(documents: dict, media: dict) -> dict:
     timeline_fps = Fraction(int(plan["timeline_fps"]["num"]), int(plan["timeline_fps"]["den"]))
     selects = {item["select_id"]: item for item in documents.get("selects", {}).get("items", [])}
     expected_in = 0
+    source_audio_format = None
     for number, item in enumerate(plan["items"]):
         path = f"/items/{number}"
         source_in, source_out = int(item["source_in_frame"]), int(item["source_out_frame"])
@@ -71,6 +74,7 @@ def analyze_edit(documents: dict, media: dict) -> dict:
         expected_in = timeline_out
         scan = measured.get(item["source_id"])
         video = scan.get("video") if scan else None
+        audio_cut = {"status": "NOT_APPLICABLE", "policy": item["audio_policy"]}
         if scan is None or scan["status"] != "PASS":
             issue(path + "/source_id", "SOURCE_SCAN_FAILED", "Referenced source has no passing fresh scan")
         elif video is None:
@@ -87,12 +91,28 @@ def analyze_edit(documents: dict, media: dict) -> dict:
                 selected = selects[item["select_ref"]]
                 if Fraction(source_in, 1) / fps < Fraction(int(selected["start_ms"]), 1000) or Fraction(source_out, 1) / fps > Fraction(int(selected["end_ms"]), 1000):
                     issue(path + "/select_ref", "SELECT_WINDOW_BOUND", "Exact frame cut lies outside the referenced select's millisecond window")
+            if item["audio_policy"] == "SOURCE":
+                audio = scan.get("audio")
+                if audio is None:
+                    issue(path + "/audio_policy", "SOURCE_AUDIO_MISSING", "SOURCE requires a decoded audio stream; use an explicit MUTE plan for video-only media")
+                else:
+                    audio_cut = sample_cut(audio["timing"], source_in, source_out, timeline_in, fps)
+                    audio_format = (audio["sample_rate"], audio["channels"])
+                    if audio["channels"] not in (1, 2):
+                        issue(path + "/audio_policy", "MULTICHANNEL_AUDIO_UNSUPPORTED", "Only mono/stereo SOURCE audio is implemented")
+                    if source_audio_format is not None and audio_format != source_audio_format:
+                        issue(path + "/audio_policy", "MIXED_AUDIO_FORMAT_UNSUPPORTED", "SOURCE clips must have one sample rate and channel count; no conversion is implemented")
+                    source_audio_format = audio_format
+                    for code in audio_cut["issues"]:
+                        issue(path + "/audio_policy", code, "SOURCE audio cannot be synchronized at exact decoded sample boundaries")
         result["items"].append({"edit_id": item["edit_id"], "source_id": item["source_id"],
                                 "source_in_frame": source_in, "source_out_frame": source_out,
                                 "timeline_in_frame": timeline_in, "timeline_out_frame": timeline_out,
                                 "frame_count": length, "duration_seconds": rational(Fraction(length, 1) / timeline_fps),
-                                "audio_policy": item["audio_policy"]})
+                                "audio_policy": item["audio_policy"], "audio_cut": audio_cut})
     if result["status"] == "PASS":
+        result["source_audio_format"] = ({"sample_rate": source_audio_format[0], "channels": source_audio_format[1]}
+                                          if source_audio_format else None)
         result["timeline_frame_count"] = expected_in
         result["timeline_duration_seconds"] = rational(Fraction(expected_in, 1) / timeline_fps)
     return result
@@ -157,8 +177,8 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError, SchemaError, Unresolvable) as exc:
         print(f"EDIT_ERROR: {exc}", file=sys.stderr)
         return 2
-    print(f"EDIT_VIDEO_SCAN_{report['status']}: {args.output_dir.resolve() / 'edit-report.json'}")
-    print("Audio synchronization, proxy maps, prior locks, approval, and export NOT_CHECKED")
+    print(f"EDIT_SCAN_{report['status']}: {args.output_dir.resolve() / 'edit-report.json'}")
+    print("Compressed audio/resampling, proxy maps, prior locks, approval, and export NOT_CHECKED")
     return 0 if report["status"] == "PASS" else 1
 
 

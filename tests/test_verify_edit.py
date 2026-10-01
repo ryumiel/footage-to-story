@@ -24,7 +24,10 @@ def media(documents):
     return {"job_id": documents["manifest"]["job_id"], "status": "PASS", "sources": [
         {"source_id": source["source_id"], "status": "PASS", "path": source["path"],
          "video": {"cfr_status": "CFR", "fps": {"num": 25, "den": 1},
-                   "decoded_frame_count": source["frame_count"]}}
+                   "decoded_frame_count": source["frame_count"]},
+         "audio": {"sample_rate": 48000, "channels": 2,
+                   "timing": {"status": "PASS", "sample_rate": 48000,
+                              "sample_count": 480000, "issues": []}}}
         for source in documents["manifest"]["sources"]]}
 
 
@@ -40,7 +43,7 @@ def test_complete_bundle_maps_exact_sequential_cuts(documents, media):
     assert report["timeline_duration_seconds"] == {"num": 7, "den": 1}
     assert report["items"][0]["timeline_out_frame"] == 100
     assert report["items"][1]["timeline_out_frame"] == 175
-    assert "audio timing/synchronization" in report["not_checked"]
+    assert "compressed-audio priming/resampling" in report["not_checked"]
     assert (documents, media) == before
 
 
@@ -107,12 +110,41 @@ def test_mixed_fps_is_rejected_even_if_frame_counts_fit(documents, media):
     assert "MIXED_FPS_UNSUPPORTED" in issue_codes(ve.analyze_edit(documents, media))
 
 
+@pytest.mark.parametrize("case,expected", [("missing", "SOURCE_AUDIO_MISSING"),
+                                         ("unverified", "SOURCE_AUDIO_TIMING_UNVERIFIED"),
+                                         ("short", "DECODED_AUDIO_BOUND"),
+                                         ("multichannel", "MULTICHANNEL_AUDIO_UNSUPPORTED"),
+                                         ("mixed-rate", "MIXED_AUDIO_FORMAT_UNSUPPORTED")])
+def test_source_audio_requires_supported_exact_clock(documents, media, case, expected):
+    audio = media["sources"][0]["audio"]
+    if case == "missing":
+        media["sources"][0]["audio"] = None
+    elif case == "unverified":
+        audio["timing"]["status"] = "FAIL"
+    elif case == "short":
+        audio["timing"]["sample_count"] = 239999
+    elif case == "multichannel":
+        audio["channels"] = 6
+    else:
+        documents["edit-plan"]["items"][1]["audio_policy"] = "SOURCE"
+        audio = media["sources"][1]["audio"]
+        audio["sample_rate"] = audio["timing"]["sample_rate"] = 44100
+    assert expected in issue_codes(ve.analyze_edit(documents, media))
+
+
+def test_mute_does_not_claim_or_require_source_audio_timing(documents, media):
+    documents["edit-plan"]["items"][0]["audio_policy"] = "MUTE"
+    media["sources"][0]["audio"]["timing"]["status"] = "FAIL"
+    assert ve.analyze_edit(documents, media)["status"] == "PASS"
+
+
 def test_equivalent_fractional_rates_and_integer_float_schema_values(documents, media):
     documents = manual(documents)
     documents["edit-plan"]["timeline_fps"] = {"num": 60000.0, "den": 2002.0}
     for source in media["sources"]:
         source["video"]["fps"] = {"num": 30000, "den": 1001}
     documents["edit-plan"]["items"][0]["source_in_frame"] = 25.0
+    documents["edit-plan"]["items"][0]["source_out_frame"] = 125.0
     report = ve.analyze_edit(documents, media)
     assert report["status"] == "PASS"
     assert report["timeline_duration_seconds"] == {"num": 7007, "den": 1200}
@@ -283,3 +315,38 @@ def test_generated_video_edit_cli(tmp_path, rate, frames, den):
     assert report["timeline_frame_count"] == frames
     assert report["timeline_duration_seconds"] == ({"num": 1, "den": 1} if den == 1 else {"num": 1001, "den": 1000})
     assert "approval" in result.stdout and "NOT_CHECKED" in result.stdout
+
+
+@pytest.mark.skipif(not shutil.which("ffmpeg") or not shutil.which("ffprobe"), reason="Requires real FFmpeg tools")
+@pytest.mark.parametrize("case", ["pcm", "ntsc", "shifted", "compressed", "fractional", "mute-shifted"])
+def test_generated_source_audio_clock_and_cuts(tmp_path, case):
+    ntsc = case in {"ntsc", "fractional"}
+    media = tmp_path / "synthetic-av.mov"
+    command = ["ffmpeg", "-nostdin", "-v", "error", "-f", "lavfi", "-i",
+               f"testsrc=size=64x48:rate={'30000/1001' if ntsc else '25'}"]
+    if case in {"shifted", "mute-shifted"}:
+        command += ["-itsoffset", "0.04"]
+    command += ["-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000",
+                "-t", "1.001" if ntsc else "1", "-c:v", "mpeg4", "-pix_fmt", "yuv420p",
+                "-c:a", "aac" if case == "compressed" else "pcm_s16le", str(media)]
+    subprocess.run(command, check=True, capture_output=True, timeout=30)
+    build_manifest("synthetic-av", [("src-1", media)], tmp_path / "inventory")
+    frames, split = (30, 1 if case == "fractional" else 5) if ntsc else (25, 5)
+    plan = {"schema_version": "2.0.0", "job_id": "synthetic-av", "revision": "synthetic-r1",
+            "timeline_name": "Synthetic audio timing", "edit_mode": "SEQUENTIAL_CUTS",
+            "timeline_fps": {"num": 30000 if ntsc else 25, "den": 1001 if ntsc else 1}, "items": []}
+    for number, (start, end) in enumerate(((0, split), (split, frames))):
+        plan["items"].append({"edit_id": f"edit-{number}", "source_id": "src-1", "source_in_frame": start,
+                              "source_out_frame": end, "timeline_in_frame": start,
+                              "audio_policy": "MUTE" if case == "mute-shifted" else "SOURCE",
+                              "reason": "Synthetic sample-aligned cut", "locked": False})
+    plan_path = tmp_path / "edit-plan.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    report = ve.verify_edit({"manifest": tmp_path / "inventory/manifest.json", "edit-plan": plan_path}, tmp_path / "checked")
+    if case in {"pcm", "ntsc", "mute-shifted"}:
+        assert report["status"] == "PASS", report["issues"]
+        if case != "mute-shifted":
+            assert report["items"][0]["audio_cut"]["source_out_sample"] == (8008 if ntsc else 9600)
+    else:
+        assert report["status"] == "FAIL"
+        assert ("FRACTIONAL_AUDIO_SAMPLE_CUT_UNSUPPORTED" if case == "fractional" else "SOURCE_AUDIO_TIMING_UNVERIFIED") in issue_codes(report)

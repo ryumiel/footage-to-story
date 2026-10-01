@@ -20,11 +20,13 @@ from referencing.exceptions import Unresolvable
 try:
     from .validate_json import load_json, _unique_object, _reject_constant
     from .check_integrity import check_documents
+    from .audio_timing import analyze_pcm
     from .probe_manifest import (MAX_INTEGER, check_output_directory, file_signature,
                                  positive_integer, positive_rate, run_probe_command)
 except ImportError:
     from validate_json import load_json, _unique_object, _reject_constant
     from check_integrity import check_documents
+    from audio_timing import analyze_pcm
     from probe_manifest import (MAX_INTEGER, check_output_directory, file_signature,
                                 positive_integer, positive_rate, run_probe_command)
 
@@ -116,6 +118,7 @@ def summarize_decode(probe: dict) -> dict:
                  "decoded_samples": sum(samples) if decoded and all(sample is not None for sample in samples) else None,
                  "sample_rate": positive_integer(stream.get("sample_rate")),
                  "channels": positive_integer(stream.get("channels"))}
+        audio["timing"] = analyze_pcm(stream, decoded)
         if audio["sample_rate"] is None or audio["channels"] is None:
             issues.append("UNKNOWN_AUDIO_FORMAT")
     if video:
@@ -190,7 +193,7 @@ def verify_media(manifest_path: Path, output: Path, ffprobe: str = "ffprobe",
     version = run_probe_command([executable, "-version"], timeout).stdout
     report = {"job_id": manifest["job_id"], "manifest_sha256": hashlib.sha256(raw_manifest).hexdigest(),
               "status": "PASS", "sources": [],
-              "not_checked": ["timeline continuity", "audio timing/synchronization", "proxy mappings",
+              "not_checked": ["timeline continuity", "edit audio cuts/synchronization", "proxy mappings",
                               "document references", "permission authenticity", "approval", "export"]}
     # Temporary decode files are external runtime artifacts, never source fixtures.
     with tempfile.TemporaryDirectory(prefix="footage-media-check-") as temporary:
@@ -205,7 +208,7 @@ def verify_media(manifest_path: Path, output: Path, ffprobe: str = "ffprobe",
             command = [executable, "-v", "error", "-protocol_whitelist", "file",
                        "-format_whitelist", "mov,wav", "-enable_drefs", "0",
                        "-show_frames", "-show_streams", "-show_format", "-show_entries",
-                       "frame=stream_index,media_type,pts,duration,nb_samples", "-of", "json", str(path)]
+                       "frame=stream_index,media_type,pts,duration,nb_samples,sample_fmt,channels,side_data_list", "-of", "json", str(path)]
             raw_path = Path(temporary) / f"decode-{number:04d}.json"
             stderr = decode_to_file(command, raw_path, timeout, max_bytes)
             probe = load_json(raw_path)
@@ -262,7 +265,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"MEDIA_ERROR: {exc}", file=sys.stderr)
         return 2
     print(f"MEDIA_SCAN_{report['status']}: {args.output_dir.resolve() / 'media-report.json'}")
-    print("Video identity/count/timing scan only; audio timing, timeline, approval, and export NOT_CHECKED")
+    print("Media identity/video timing scan; PCM timing recorded separately. Edit audio cuts, timeline, approval, and export NOT_CHECKED")
     return 0 if report["status"] == "PASS" else 1
 
 

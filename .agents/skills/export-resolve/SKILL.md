@@ -11,8 +11,9 @@ Current input contracts live in `schemas/2.0.0/`.
 
 ## Present implementation status
 
-**No FCPXML exporter, domain/media integrity gate, or authentic approval-verification
-runner is implemented in this revision.** Do not claim to export a real timeline.
+**Document, fresh-media, sequential-video, and zero-origin PCM cut checks exist.
+No FCPXML exporter or authentic approval-verification runner is implemented in
+this revision.** Do not claim to export a real timeline.
 This skill records the required procedure for when those components exist.
 
 ## Required gates before an export

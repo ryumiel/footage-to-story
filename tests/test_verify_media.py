@@ -173,7 +173,7 @@ def test_verified_report_preserves_inputs_and_provenance(tmp_path, synthetic_run
     assert report["sources"][0]["video"]["decoded_frame_count"] == 3
     assert report["manifest_sha256"] == hashlib.sha256(before[0]).hexdigest()
     assert (path.read_bytes(), media.read_bytes()) == before
-    assert "audio timing/synchronization" in report["not_checked"]
+    assert "edit audio cuts/synchronization" in report["not_checked"]
     assert load_json(tmp_path / "output/media-report.json") == report
     provenance = load_json(tmp_path / "output/decode-0001-provenance.json")
     assert provenance["command"] == calls[0]

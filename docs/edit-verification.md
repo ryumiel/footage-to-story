@@ -1,4 +1,4 @@
-# Sequential Video Edit Verification
+# Sequential Edit Verification
 
 `scripts/verify_edit.py` validates supplied documents, reruns the supported media
 scan, and checks frame-based source cuts and sequential video timeline math.
@@ -66,13 +66,22 @@ It does not add timecode offsets, nonzero origins, proxies, subtitles, or retimi
 Millisecond candidates still do not specify final cuts: the submitted frame-based
 plan must choose supported boundaries and pass the exact containment comparison.
 
-## Audio, approval, and export remain separate
+## SOURCE and MUTE audio rules
 
-SOURCE/MUTE policies are retained in the report. No audio synchronization, sample
-cut rounding, priming/trimming, per-frame format stability, or source-audio timeline
-mapping is verified. SOURCE can therefore receive a video-check PASS while audio
-verification remains outstanding. Neither audio presence nor the policy label is
-evidence of synchronization.
+SOURCE requires decoded zero-origin contiguous PCM audio with stable sample format
+and channels. Every frame duration must match its sample count at the reported
+sample rate. Padding, side data, gaps, overlaps, and compressed audio fail this
+audio gate. Source IN/OUT and timeline IN must land on exact integer sample
+boundaries; no rounding or resampling is applied. Cuts cannot exceed decoded
+audio samples. SOURCE clips must share one sample rate and mono/stereo channel
+count. Video-only sources require explicit MUTE. MUTE does not require passing
+audio timing because it retains no source audio.
+
+At 30000/1001 FPS and 48000 Hz, individual frame boundaries can fall between
+samples; aligned five-frame boundaries are supported. This checks timestamp
+and sample-clock alignment, not acoustic lip-sync or the truth of recorded sound.
+Compressed-audio priming, nonzero origins, conversion, and multichannel routing
+remain unsupported.
 
 Prior locked decisions, permission authenticity, human approval capture, the
 review's stored plan digest comparison, FCPXML conversion, and actual Resolve
@@ -88,8 +97,8 @@ in `media/` and a complete `edit-report.json` published last. Reports and raw da
 are runtime evidence, not new stage contracts or Git source. Hard-link support is
 required for final report publication, as with the media scanner.
 
-- **0:** `EDIT_VIDEO_SCAN_PASS`; supported video/source/timeline checks passed.
-- **1:** `EDIT_VIDEO_SCAN_FAIL`; a complete failure report and fresh scan evidence
+- **0:** `EDIT_SCAN_PASS`; supported video, SOURCE audio, and timeline checks passed.
+- **1:** `EDIT_SCAN_FAIL`; a complete failure report and fresh scan evidence
   were written, for example a timeline gap or failed CFR media scan.
 - **2:** Input/schema/document preflight, source identity/decoder/resource-limit,
   concurrent-change, or I/O error; no complete successful result is produced.
@@ -98,7 +107,7 @@ Invalid record relationships fail before media reads and output creation. I/O
 failure during publication may leave an incomplete bundle. Retrying requires a
 fresh directory; a failed run must not be consumed as verified evidence.
 `--ffprobe`, `--timeout`, and `--max-output-bytes` are forwarded to the media scan.
-Every successful CLI invocation prints the outstanding audio/approval/export gates.
+Every successful CLI invocation prints the outstanding compressed-audio/approval/export gates.
 
 ## Synthetic tests
 
@@ -106,5 +115,7 @@ Every successful CLI invocation prints the outstanding audio/approval/export gat
 fractional durations, start/adjacency/order, actual source bounds, unsupported
 sources/rates, exact select-window containment, final integer limits, schema-first
 rejection, byte hashes, input preservation, changes between phases, failure reports,
-and real generated 25/30000/1001 FPS video through the CLI. Run
+and generated PCM, compressed, shifted, muted, and fractional-sample cases at
+25/30000/1001 FPS through the CLI. `tests/test_audio_timing.py` covers decoded
+PCM timing and exact sample arithmetic. Run
 `python -m pytest -q`; machine reports belong under `artifacts/validation/`.

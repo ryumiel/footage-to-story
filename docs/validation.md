@@ -106,7 +106,8 @@ provided by the record helpers. A separate bounded source/video scanner now chec
 current hashes, decoded counts, and exact video PTS/CFR (`docs/media-verification.md`).
 `scripts/verify_edit.py` now reruns that scan and checks zero-origin CFR edit bounds,
 exact select-window containment, matching FPS, and sequential video timeline math
-(`docs/edit-verification.md`). Audio timing, nonzero-origin/proxy maps, prior locks,
+and zero-origin PCM sample cuts (`docs/edit-verification.md`). Compressed-audio
+conversion, nonzero-origin/proxy maps, prior locks,
 and authentic approval/hash verification remain unimplemented.
 
 Keep these as small application invariants as M1 develops; do not build

@@ -35,9 +35,9 @@ not authorize Antigravity to make editorial choices or grant tools/network acces
 
 Schema validation, local ffprobe reported-manifest extraction, and supplied-document
 relationship checks, bounded hash/decoded-video scans, and sequential video edit
-checks are implemented. See `docs/media-manifest.md`, `docs/document-integrity.md`,
+and zero-origin PCM sample-cut checks are implemented. See `docs/media-manifest.md`, `docs/document-integrity.md`,
 `docs/media-verification.md`, and `docs/edit-verification.md` for real commands and
-their limits. Refer to the roadmap for audio timing, nonzero-origin/proxy mappings, authentic approval
+their limits. Refer to the roadmap for compressed-audio conversion, nonzero-origin/proxy mappings, authentic approval
 verification, and export. Do not invent a command
 for a missing implementation. Missing execution capability is BLOCKED, not PASS.
 
