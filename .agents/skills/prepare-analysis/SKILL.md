@@ -26,8 +26,10 @@ questions but is not evidence that a shot or spoken line exists.
 5. Ask for observations, audible/visible content, uncertainty, and candidate times.
    Do not ask the analyzer to choose final selects, pacing, or narrative order.
    For the implemented `agy` runner, use speech/dialogue or `audible_dialogue`
-   categories and exact frame/sample-aligned ranges on verified zero-origin CFR
-   sources. Other analysis categories require a separately supported capability.
+   categories in default speech mode, or exactly `visual` plus one of those categories
+   in explicit audiovisual mode. Both paths require exact frame/sample-aligned
+   ranges on verified zero-origin CFR sources. Combined input uses one synchronized
+   video clip with compressed speech audio. Non-speech descriptions remain excluded.
 6. Retain known facts, notes, and hypotheses as context, not manufactured observations.
 7. Write the request and run the existing validator:
 

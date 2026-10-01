@@ -1,10 +1,12 @@
-# Bounded Antigravity speech analysis
+# Bounded Antigravity visual and speech analysis
 
-The M3 adapter supports speech observations through Antigravity CLI `agy` with an
+The M3 adapter supports speech and combined visual/dialogue observations through
+Antigravity CLI `agy` with an
 explicit Gemini model. It returns canonical analysis, not selects, a story,
 a timeline, approved quotations, or final frame cuts. General sound descriptions
 are excluded after synthetic tone and silence controls produced invented sounds.
-Human listening and speech-boundary accuracy remain NOT_RUN by user decision.
+Human listening, speaker identity, and precise visual/speech-boundary accuracy
+remain NOT_RUN by user decision.
 
 ## Local staging
 
@@ -12,7 +14,9 @@ Human listening and speech-boundary accuracy remain NOT_RUN by user decision.
 source clocks, and extracts only explicitly requested ranges. Supported sources
 are self-contained zero-origin CFR MOV/MP4 with one usable mono/stereo audio
 stream and known byte hashes. Source audio may be compressed. Requests must use
-speech/dialogue categories; `audible_dialogue` is also accepted.
+speech/dialogue categories; `audible_dialogue` is also accepted. Explicit
+`mode="audiovisual"` requires exactly `visual` plus one of those speech categories.
+The default `mode="speech"` continues to create audio-only clips.
 
 Both range endpoints must map exactly to integer source video frames and decoded
 audio samples. Unknown clocks, internal audio gaps/resets, proxies, variable-rate
@@ -28,7 +32,7 @@ python scripts/stage_analysis_media.py \
   --max-total-seconds 60
 ```
 
-Staging is local and does not authorize transmission. MP3 clips and `mapping.json`
+Staging is local and does not authorize transmission. MP3 or combined MP4 clips and `mapping.json`
 are published into a new directory. Verification checks exact decoded sample
 counts and waveform correlation greater than 0.98 at zero offset against the
 original selected samples. Temporary decoded float samples are removed; original
@@ -36,6 +40,17 @@ media stays unchanged. Source global/stream metadata and chapters are stripped
 from uploaded clips; provenance stays in local records. An exclusive cooperative writer lock refuses concurrent
 staging. This is analysis-extraction verification, not exact lossy-audio identity
 or proof of quotation correctness.
+
+Audiovisual staging retains all selected source frames and rational FPS. It bounds
+visual width to 640 pixels with a deterministic transform, encodes transformed
+frames losslessly as H.264, and keeps compressed MP3 speech in the same MP4. Fresh
+zero-origin CFR checks and per-frame decoded hashes verify correspondence against
+the same source transform. Audio sample count/correlation and shared zero origin
+verify extraction synchronization. This analysis crop is not a general proxy or
+export mapping; source resolution detail can be lost through resizing.
+
+Use `--mode audiovisual` for local staging or the explicit Python API keyword for
+provider execution. Only the combined clip is uploaded, not a separate audio copy.
 
 ## Upload authority and confinement
 
@@ -51,7 +66,7 @@ adapter that reconstructs consent from stored labels.
 The runner stages before uploading, pins a Gemini model, and creates a private
 isolated temporary workspace for each attempt. It installs a workspace
 `.agents/hooks.json` PreToolUse gate from `scripts/agy_guard.py`. The gate permits
-exactly one native `view_file` of that attempt's exact hash-bound MP3, followed by
+exactly one native `view_file` of that attempt's exact hash-bound MP3 or MP4, followed by
 one output-only `finish` with a strict schema-valid response. The audit binds the
 completion payload hash to the final output. It denies all
 other tools and paths, including commands, writes, browsers, MCP tools, and
@@ -66,7 +81,7 @@ tool event by the provider's step index. Other unknown fields are rejected.
 
 A zero-token `/hooks` metadata preflight must show the exact enabled guard as the
 sole enabled hook, avoiding undocumented precedence with other hook configurations.
-Guard, config, clip, request, manifest, and source hashes are rechecked. A completed
+Guard, config, selected response schema, clip, request, manifest, and source hashes are rechecked. A completed
 run also requires matching tool events and guard audit evidence. Denied or
 unaudited activity fails the run; a model-reported PASS or process exit 0 is not
 sufficient. This gate confines agent tools; it is not an OS sandbox, authentication
@@ -100,7 +115,12 @@ widen ranges automatically. Local job resume does not grant upload authority.
 ## Response handling and verification boundaries
 
 `agy-response.schema.json` is a strict auxiliary provider contract for local-clip
-speech observations. It does not change canonical stage schemas. Existing
+speech observations. `agy-av-response.schema.json` adds separate typed `visual`
+and `dialogue` segments and requires both tracks to be accessible. Visual entries
+require visible content and null audible content; dialogue entries require the
+inverse. Mixed segments, arbitrary associations, and unknown fields are rejected.
+Related observations share source-relative time windows and evidence; overlap does
+not prove speaker identity or lip synchronization. It does not change canonical stage schemas. Existing
 `jsonschema` and `referencing` validate it offline. Unknown fields, duplicate JSON
 keys, non-finite values, invalid source-relative ranges, foreign/duplicate segment
 IDs, and unavailable audio fail. No evidence, dialogue, confidence, source identity,
@@ -114,15 +134,18 @@ request/manifest bytes, source and clip hashes, tool audits, usage, mapping, and
 normalization evidence remain in the new runtime directory, including failures.
 Canonical schema conformance cannot detect semantically invented speech or prove
 that supplied evidence describes the media truthfully.
+Provider evidence strings can retain local clip timestamps; the normalization
+record supplies their source origin. Do not interpret those prose timestamps as
+verified source frame cuts.
 
 Manual acceptance already exercised real permitted speech ranges, published
 caption comparison, and canonical import. It retained spelling/wording differences
 and cut-off dialogue. Synthetic coarse video ingestion demonstrated sampled frame
 observations, not precise motion or frame-boundary accuracy. General visual
-analysis is outside this speech adapter. Human listening, quotation accuracy, and
+observations are available through the explicit audiovisual mode. Human listening, quotation accuracy, and
 provider speech-boundary accuracy remain NOT_RUN. The adapter has no export authority.
 
-Reusable-adapter acceptance passed with `agy` 1.2.14 and
+Speech-only reusable-adapter acceptance passed with `agy` 1.2.14 and
 `gemini-3.8-flash-high`: two explicitly authorized compressed speech clips totaling
 12 seconds produced four canonical observations. Local source-offset checks,
 loaded-hook inspection, read/completion audit binding, usage accounting, and
@@ -130,6 +153,17 @@ provenance import passed. The run used two calls and no retries. Failed earlier
 transport attempts were preserved. The full repository suite passed 679 tests;
 independent source and security reviews passed. Real dialogue and run records
 remain in ignored job storage.
+
+Combined-input acceptance passed in the same target runtime: one four-second
+generated clip with independent visual and speech content yielded two visual
+observations and one dialogue observation. A separate generator oracle confirmed
+the controlled shapes, colors, direction, spoken phrase, and coarse visual ranges.
+One native MP4 read and completion, schema/media hashes, source offsets, canonical
+import, and original-source preservation passed. The run used one call, no retries,
+and 59,208 observed tokens. The response retained sampling and sub-second timing
+uncertainty; this does not establish accuracy on arbitrary footage, speaker identity,
+or precise speech/visual boundaries. The full suite passed 705 tests and independent
+source/security reviews passed. Runtime evidence remains ignored job data.
 
 Official provider contracts: [CLI hooks](https://antigravity.google/docs/hooks/),
 [headless mode](https://antigravity.google/docs/cli/headless/), and

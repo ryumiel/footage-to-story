@@ -48,13 +48,42 @@ def setup(tmp_path, monkeypatch):
     return manifest, request, source, auth
 
 
+@pytest.fixture
+def av_setup(setup, monkeypatch):
+    manifest, request, source, _ = setup
+    doc = json.loads(request.read_text())
+    doc['requested_categories'] = ['visual', 'audible_dialogue']
+    doc['sources'][0]['ranges'] = [{'start_ms': 1000, 'end_ms': 2000}]
+    request.write_text(json.dumps(doc))
+    auth = {'observed': True, 'manifest_sha256': digest(manifest.read_bytes()),
+            'request_sha256': digest(request.read_bytes()),
+            'authorization_ref': doc['authorization_ref']}
+    def staged(manifest_path, request_path, output_dir, **kwargs):
+        assert kwargs['mode'] == 'audiovisual'
+        output_dir.mkdir()
+        media = output_dir / 'clip-0001.mp4'
+        media.write_bytes(b'synthetic audiovisual MP4 bytes')
+        return {'job_id': doc['job_id'], 'request_id': doc['request_id'],
+                'manifest_sha256': digest(manifest.read_bytes()),
+                'request_sha256': digest(request.read_bytes()),
+                'clips': [{'clip_id': 'clip-0001', 'source_id': 'src-001',
+                           'source_start_ms': 1000, 'source_end_ms': 2000,
+                           'local_start_ms': 0, 'local_end_ms': 1000,
+                           'source_path': str(source), 'source_sha256': digest(source.read_bytes()),
+                           'media_kind': 'audiovisual', 'media_path': media.name,
+                           'media_sha256': digest(media.read_bytes()), 'media_size_bytes': media.stat().st_size,
+                           'audio_path': media.name, 'audio_sha256': digest(media.read_bytes())}]}
+    monkeypatch.setattr(runner, 'stage_media', staged)
+    return manifest, request, source, auth
+
+
 def fake_agy(tmp_path, mode='success'):
     script = tmp_path / f'fake-agy-{mode}'
     script.write_text('''#!/usr/bin/env python3
 import hashlib, json, os, pathlib, sys, time
 mode = ''' + repr(mode) + '''
 cwd = pathlib.Path.cwd()
-media = cwd / 'sample.mp3'
+media = cwd / ('sample.mp4' if (cwd / 'sample.mp4').exists() else 'sample.mp3')
 if '/hooks' in sys.argv:
     hookfile = cwd / '.agents' / 'hooks.json'
     config = json.loads(hookfile.read_text())['bounded-media-guard']['PreToolUse'][0]['hooks'][0]
@@ -98,6 +127,30 @@ response = {'audio_available':True,'segments':[{'segment_id':'clip-01-seg-1',
             'start_ms':100,'end_ms':900,'summary':'Synthetic spoken phrase',
             'audible_content':'Synthetic speech', 'confidence':0.8,
             'evidence':['Synthetic audible words']}], 'warnings':[]}
+if media.suffix == '.mp4':
+    response = {'video_available':True,'audio_available':True,'segments':[
+        {'segment_id':'clip-0001-visual-1','start_ms':100,'end_ms':700,
+         'observation_type':'visual','summary':'A red square moves left.',
+         'visible_content':'Red square shifts left.','audible_content':None,
+         'confidence':0.9,'evidence':['Red square visible at left']},
+        {'segment_id':'clip-0001-dialogue-1','start_ms':200,'end_ms':900,
+         'observation_type':'dialogue','summary':'Synthetic speech is heard.',
+         'visible_content':None,'audible_content':'Synthetic speech',
+         'confidence':0.8,'evidence':['Spoken words audible']}], 'warnings':[]}
+    if mode == 'av-empty': response['segments'] = []
+    if mode == 'av-missing-video': response['video_available'] = False
+    if mode == 'av-missing-audio': response['audio_available'] = False
+    if mode == 'av-mixed': response['segments'][0]['observation_type'] = 'mixed'
+    if mode == 'av-unknown': response['segments'][0]['identity'] = 'invented'
+    if mode == 'av-cross-scope': response['segments'][1]['end_ms'] = 1001
+    if mode == 'av-wrong-content': response['segments'][0]['audible_content'] = 'claimed sound'
+    if mode == 'av-mp3-read':
+        wrong = cwd / 'sample.mp3'
+        audits[0]['decision'] = 'deny'
+        audits[0]['path'] = str(wrong)
+        (cwd / '.agents' / 'audit.ndjson').write_text(''.join(json.dumps(row) + '\\n' for row in audits))
+        read_active['step_update']['tool_info']['parameters']['AbsolutePath'] = str(wrong)
+        read_done['step_update']['tool_info']['parameters']['AbsolutePath'] = str(wrong)
 if mode == 'unknown': response['segments'][0]['invented'] = 'no'
 if mode == 'bounds': response['segments'][0]['end_ms'] = 1001
 if mode == 'unavailable': response['audio_available'] = False
@@ -106,7 +159,7 @@ finish_hash = hashlib.sha256(json.dumps(response, sort_keys=True, separators=(',
 finish_audit = {'tool':'finish','path':None,'decision':'allow',
                 'reason':'Synthetic schema-valid completion', 'output_sha256':finish_hash}
 if mode == 'finish-hash-mismatch': finish_audit['output_sha256'] = '0' * 64
-if mode in ('unknown', 'deny', 'finish-denied'):
+if mode in ('unknown', 'deny', 'finish-denied', 'av-mixed', 'av-unknown', 'av-wrong-content', 'av-mp3-read'):
     finish_audit = {'tool':'finish','path':None,'decision':'deny',
                     'reason':'Synthetic guard rejected completion'}
 if mode != 'missing-finish':
@@ -116,7 +169,7 @@ finish_active = {'event':'step_update','step_update':{'step_index':2,'step_type'
                  'tool_name':'finish','tool_info':{'parameters':response}}}
 finish_done = {'event':'step_update','step_update':{'step_index':2,'step_type':'finish','state':'DONE'}}
 if mode == 'finish-foreign-index': finish_done['step_update']['step_index'] = 3
-if mode in ('unknown', 'deny', 'finish-denied'):
+if mode in ('unknown', 'deny', 'finish-denied', 'av-mixed', 'av-unknown', 'av-wrong-content', 'av-mp3-read'):
     finish_done = {'event':'step_update','step_update':{'step_index':2,'step_type':'tool',
                    'state':'ERROR','tool_name':'finish'}}
 result = {'event':'result','result':{'status':'SUCCESS','structured_output':response,
@@ -124,6 +177,9 @@ result = {'event':'result','result':{'status':'SUCCESS','structured_output':resp
 if mode == 'finish-final-mismatch':
     result['result']['structured_output'] = json.loads(json.dumps(response))
     result['result']['structured_output']['segments'][0]['summary'] = 'Different final words'
+if mode == 'av-final-mismatch':
+    result['result']['structured_output'] = json.loads(json.dumps(response))
+    result['result']['structured_output']['segments'][0]['summary'] = 'Different visual action'
 if mode == 'unknown-usage': del result['result']['usage']
 if mode == 'provider-error': result['result']['status'] = 'ERROR'
 if mode == 'error-once' and cwd.name.endswith('-01'): result['result']['status'] = 'ERROR'
@@ -149,6 +205,14 @@ def call(setup, tmp_path, *, mode='success', **kwargs):
                                agy=fake_agy(tmp_path, mode), **kwargs)
 
 
+def av_call(av_setup, tmp_path, *, fake_mode='success', **kwargs):
+    manifest, request, _, auth = av_setup
+    return runner.run_analysis(manifest, request, tmp_path / 'run',
+                               observed_upload_authorization=auth,
+                               agy=fake_agy(tmp_path, fake_mode),
+                               mode='audiovisual', **kwargs)
+
+
 def test_success_preserves_provider_and_imports_candidate_offsets(setup, tmp_path):
     report = call(setup, tmp_path)
     assert report['status'] == 'PASS'
@@ -160,6 +224,57 @@ def test_success_preserves_provider_and_imports_candidate_offsets(setup, tmp_pat
     assert analysis['segments'][0]['start_ms'] == 100
     assert analysis['segments'][0]['audible_content'] == 'Synthetic speech'
     assert (output / 'imported' / 'raw-input.bin').read_bytes() == (output / 'analysis.json').read_bytes()
+
+
+def test_av_import_preserves_separate_overlapping_modalities(av_setup, tmp_path):
+    report = av_call(av_setup, tmp_path)
+    assert report['status'] == 'PASS' and report['mode'] == 'audiovisual'
+    assert report['visual_accuracy'] == 'NOT_RUN'
+    assert report['response_schema_sha256'] == digest(runner.AV_SCHEMA.read_bytes())
+    assert report['attempts'][0]['media_kind'] == 'audiovisual'
+    output = tmp_path / 'run'
+    assert (output / 'clip-0001-attempt-01' / 'sample.mp4').read_bytes() == \
+           (output / 'staged' / 'clip-0001.mp4').read_bytes()
+    analysis = json.loads((output / 'imported' / 'analysis.json').read_text())
+    assert [segment['observation_type'] for segment in analysis['segments']] == ['visual', 'dialogue']
+    assert [(segment['start_ms'], segment['end_ms']) for segment in analysis['segments']] == \
+           [(1100, 1700), (1200, 1900)]
+    assert analysis['segments'][0]['visible_content'] == 'Red square shifts left.'
+    assert analysis['segments'][0]['audible_content'] is None
+    assert analysis['segments'][1]['visible_content'] is None
+    assert analysis['segments'][1]['audible_content'] == 'Synthetic speech'
+    assert analysis['segments'][0]['start_ms'] < analysis['segments'][1]['start_ms'] < analysis['segments'][0]['end_ms']
+
+
+def test_av_empty_observations_are_valid_when_modalities_available(av_setup, tmp_path):
+    report = av_call(av_setup, tmp_path, fake_mode='av-empty')
+    assert report['status'] == 'PASS'
+    assert json.loads((tmp_path / 'run' / 'analysis.json').read_text())['segments'] == []
+
+
+@pytest.mark.parametrize('fake_mode', ['av-missing-video', 'av-missing-audio', 'av-mixed',
+                                       'av-unknown', 'av-cross-scope', 'av-wrong-content',
+                                       'av-final-mismatch', 'av-mp3-read'])
+def test_av_bad_provider_observation_never_imports(av_setup, tmp_path, fake_mode):
+    with pytest.raises(Exception):
+        av_call(av_setup, tmp_path, fake_mode=fake_mode)
+    output = tmp_path / 'run'
+    assert json.loads((output / 'run-report.json').read_text())['status'] == 'FAIL'
+    assert not (output / 'imported').exists()
+
+
+@pytest.mark.parametrize('categories', [['visual'], ['speech'], ['visual', 'speech', 'dialogue'],
+                                        ['visual', 'technical_quality']])
+def test_av_requires_exact_visual_and_one_speech_category(av_setup, tmp_path, categories):
+    manifest, request, source, auth = av_setup
+    document = json.loads(request.read_text())
+    document['requested_categories'] = categories
+    request.write_text(json.dumps(document))
+    auth['request_sha256'] = digest(request.read_bytes())
+    with pytest.raises(ValueError, match='requires visual and one speech'):
+        runner.run_analysis(manifest, request, tmp_path / 'run',
+                            observed_upload_authorization=auth, mode='audiovisual')
+    assert not (tmp_path / 'run').exists()
 
 
 @pytest.mark.parametrize('mode', ['unknown', 'bounds', 'unavailable', 'unknown-usage', 'deny',

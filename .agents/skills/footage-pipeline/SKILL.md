@@ -27,10 +27,12 @@ job freshness inspection, and subtitle sidecars now exist. Read
 `job_state.py resume` reports the next missing/stale artifact; it does not execute
 editorial decisions, authenticate saved approval, or invoke a provider/exporter.
 
-Bounded speech analysis now has a trusted-caller `agy` API; see
+Bounded speech and synchronized visual/dialogue analysis now have a trusted-caller `agy` API; see
 `docs/antigravity-analysis.md`. It stages verified ranges and confines native tools
 to one authorized clip read per attempt. Saved job state does not authorize uploads.
-General sound descriptions and visual analysis are outside this runner's scope.
+Use explicit audiovisual mode for separate visual/dialogue observations from one
+synchronized clip. General non-speech sound descriptions remain outside its scope;
+shared time ranges do not establish speaker identity or precise boundaries.
 
 ## Delegate by responsibility
 

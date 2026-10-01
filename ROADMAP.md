@@ -56,9 +56,10 @@
 
 ## M3 - Antigravity/Gemini media-analysis adapter
 
-Completed for the bounded speech-only adapter on zero-origin CFR originals.
-Manual tests established coarse visual ingestion; general visual analysis and
-non-speech sound descriptions are outside this adapter. Non-speech controls failed.
+Completed for bounded speech and combined visual/dialogue analysis on zero-origin
+CFR originals. Combined mode observes one synchronized MP4 while keeping visual
+and speech evidence distinct. Non-speech sound descriptions remain excluded after
+failed controls; precise provider boundaries and speaker identity remain NOT_RUN.
 See [adapter scope and limits](docs/antigravity-analysis.md).
 
 - [x] Verify actual video/audio ingestion and timestamp behavior in the target runtime.
@@ -77,6 +78,16 @@ See [adapter scope and limits](docs/antigravity-analysis.md).
   failed attempts are preserved and unknown usage forbids retry. Source metadata is
   stripped. A hard provider monetary ceiling remains NOT_IMPLEMENTED; provider
   retention is outside the adapter's control.
+
+- [x] Extend verified staging and single-read permissions to synchronized video/speech.
+  All selected transformed video frames, rational FPS, audio sample counts, and
+  shared zero origin are verified; compressed audio remains in the MP4.
+- [x] Preserve separate typed visual/dialogue observations on one source clock.
+  A separate strict auxiliary contract leaves canonical schemas unchanged.
+- [x] Exercise actual combined ingestion against independent generated content.
+  One four-second synthetic clip yielded two correct coarse visual observations
+  and the expected spoken phrase, with canonical source offsets and raw provenance.
+  This controlled acceptance does not verify general quotation or boundary accuracy.
 
 Do not implement all milestones before testing the simple non-AI export path.
 Unchecked M1 capabilities and explicitly deferred human verification remain open.

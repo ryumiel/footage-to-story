@@ -238,3 +238,108 @@ def test_staged_audio_excludes_source_metadata_and_chapters(input_pair, tmp_path
     staged_text = json.dumps(staged_probe)
     assert not staged_probe.get("chapters")
     assert all(sentinel not in staged_text for sentinel in sentinels)
+    av_request = json.loads(request.read_text())
+    av_request["requested_categories"].append("visual")
+    request.write_text(json.dumps(av_request))
+    av_output = tmp_path / "staged-av"
+    av_clip = stage_media(inventory / "manifest.json", request, av_output, mode="audiovisual")["clips"][0]
+    av_probe = probe(av_output / av_clip["media_path"])
+    assert [stream["codec_type"] for stream in av_probe["streams"]] == ["video", "audio"]
+    assert not av_probe.get("chapters")
+    assert all(sentinel not in json.dumps(av_probe) for sentinel in sentinels)
+
+
+def test_stage_audiovisual_preserves_exact_frames_and_audio(input_pair, tmp_path):
+    movie, manifest, request_path = input_pair
+    request = json.loads(request_path.read_text())
+    request["requested_categories"].append("visual")
+    request_path.write_text(json.dumps(request))
+    original = movie.read_bytes()
+    output = tmp_path / "staged-av"
+    report = stage_media(manifest, request_path, output, mode="audiovisual")
+    clip = report["clips"][0]
+    assert clip["media_kind"] == "audiovisual"
+    assert clip["media_path"].endswith(".mp4")
+    assert clip["media_sha256"] == clip["audio_sha256"]
+    assert clip["video_frame_count"] == 20
+    assert (clip["source_start_frame"], clip["source_end_frame"]) == (10, 30)
+    assert (clip["local_start_ms"], clip["local_end_ms"]) == (0, 800)
+    assert clip["decoded_samples"] == 38400
+    assert clip["video_decoded_frames_match"] is True
+    assert clip["audio_decoded_samples_match"] is True
+    assert clip["waveform_correlation"] > .98
+    assert (output / clip["media_path"]).is_file()
+    assert movie.read_bytes() == original
+
+
+@pytest.mark.parametrize("categories", [["visual"], ["audible_dialogue"],
+                                         ["visual", "general_sound"],
+                                         ["visual", "audible_dialogue", "other"],
+                                         ["visual", "audible_dialogue", "speech"]])
+def test_audiovisual_requires_both_supported_categories(input_pair, tmp_path, categories):
+    _, manifest, request_path = input_pair
+    request = json.loads(request_path.read_text())
+    request["requested_categories"] = categories
+    request_path.write_text(json.dumps(request))
+    output = tmp_path / "staged-av"
+    with pytest.raises(ValueError, match="Audiovisual staging requires"):
+        stage_media(manifest, request_path, output, mode="audiovisual")
+    assert not output.exists()
+
+
+def test_audiovisual_byte_cap_blocks_publication(input_pair, tmp_path):
+    _, manifest, request_path = input_pair
+    request = json.loads(request_path.read_text())
+    request["requested_categories"].append("visual")
+    request_path.write_text(json.dumps(request))
+    output = tmp_path / "staged-av"
+    with pytest.raises(ValueError, match="limit"):
+        stage_media(manifest, request_path, output, mode="audiovisual", max_clip_bytes=100)
+    assert not output.exists()
+
+
+def test_audiovisual_rational_fps_and_deterministic_downscale(tmp_path):
+    movie = tmp_path / "source.mov"
+    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-f", "lavfi", "-i",
+                    "testsrc2=size=1280x720:rate=30000/1001", "-f", "lavfi", "-i",
+                    "sine=frequency=440:sample_rate=48000", "-t", "3.003",
+                    "-c:v", "mpeg4", "-pix_fmt", "yuv420p", "-c:a", "libmp3lame", str(movie)],
+                   check=True, capture_output=True, timeout=30)
+    inventory = tmp_path / "inventory"
+    build_manifest("synthetic-job", [("src-1", movie)], inventory)
+    request = {"schema_version": "2.0.0", "job_id": "synthetic-job", "request_id": "req-1",
+               "runner": "antigravity", "provider": "gemini", "cloud_upload_allowed": False,
+               "authorization_ref": None,
+               "sources": [{"source_id": "src-1", "ranges": [{"start_ms": 1001, "end_ms": 2002}]}],
+               "questions": ["What speech and visual content is present?"],
+               "requested_categories": ["audible_dialogue", "visual"]}
+    request_path = tmp_path / "request.json"
+    request_path.write_text(json.dumps(request))
+    report = stage_media(inventory / "manifest.json", request_path, tmp_path / "av", mode="audiovisual")
+    clip = report["clips"][0]
+    assert (clip["source_start_frame"], clip["source_end_frame"]) == (30, 60)
+    assert (clip["video_fps_num"], clip["video_fps_den"]) == (30000, 1001)
+    assert (clip["video_width"], clip["video_height"]) == (640, 360)
+    assert clip["decoded_samples"] == 48048
+    assert clip["video_decoded_frames_match"] is True
+
+
+def test_audiovisual_rejects_changed_decoded_pixels(input_pair, tmp_path, monkeypatch):
+    from scripts import stage_analysis_media as staging
+    _, manifest, request_path = input_pair
+    request = json.loads(request_path.read_text())
+    request["requested_categories"].append("visual")
+    request_path.write_text(json.dumps(request))
+    original_hashes = staging._video_hashes
+
+    def tampered_hashes(*args, **kwargs):
+        values = original_hashes(*args, **kwargs)
+        if kwargs["filename"].startswith("staged-video"):
+            values[0] = "0" * 32 if values[0] != "0" * 32 else "1" * 32
+        return values
+
+    monkeypatch.setattr(staging, "_video_hashes", tampered_hashes)
+    output = tmp_path / "staged-av"
+    with pytest.raises(ValueError, match="decoded pixels differ"):
+        stage_media(manifest, request_path, output, mode="audiovisual")
+    assert not output.exists()

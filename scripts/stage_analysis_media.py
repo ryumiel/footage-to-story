@@ -154,11 +154,11 @@ def _run(command: list[str], *, timeout: float, max_bytes: int, output: Path,
             process.wait()
 
 
-def _probe_source(path: Path, ffprobe: str, timeout: float, temporary: Path) -> tuple[dict, dict, int]:
+def _probe_source(path: Path, ffprobe: str, timeout: float, temporary: Path) -> tuple[dict, dict, int, dict]:
     out = temporary / "scan.json"
     _run([ffprobe, "-v", "error", "-protocol_whitelist", "file", "-enable_drefs", "0",
           "-show_frames", "-show_streams", "-show_format", "-show_entries",
-          "frame=stream_index,media_type,pts,duration,nb_samples,sample_fmt,channels,side_data_list,width,height,interlaced_frame:stream=index,codec_type,time_base,start_time,sample_rate,channels,avg_frame_rate,disposition:format=format_name",
+          "frame=stream_index,media_type,pts,duration,nb_samples,sample_fmt,channels,side_data_list,width,height,interlaced_frame:stream=index,codec_type,time_base,start_time,sample_rate,channels,avg_frame_rate,width,height,pix_fmt,disposition:format=format_name",
           "-of", "json", str(path)], timeout=timeout, max_bytes=64 * 1024 * 1024, output=out)
     probe = _load_document(out, 64 * 1024 * 1024)
     if probe.get("format", {}).get("format_name") != "mov,mp4,m4a,3gp,3g2,mj2":
@@ -182,7 +182,21 @@ def _probe_source(path: Path, ffprobe: str, timeout: float, temporary: Path) -> 
         audio_stream, [frame for frame in probe["frames"] if frame["stream_index"] == audio["stream_index"]])
     if (audio["sample_rate"], audio["channels"], audio["decoded_samples"]) != (rate, channels, samples):
         raise ValueError("Audio decoded metadata disagrees with contiguous samples")
-    return decoded, video, rate
+    video_stream = next(s for s in streams if s["index"] == video["stream_index"])
+    return decoded, video, rate, video_stream
+
+
+def _video_hashes(command: list[str], *, ffmpeg: str, timeout: float, maximum_frames: int,
+                  temporary: Path, filename: str) -> list[str]:
+    output = temporary / filename
+    _run([ffmpeg, "-nostdin", "-v", "error", "-protocol_whitelist", "file", *command,
+          "-map", "[v]" if "-filter_complex" in command else "0:v:0", "-f", "framemd5", "-"],
+         timeout=timeout, max_bytes=maximum_frames * 256 + 4096, output=output)
+    records = [line.rsplit(",", 1)[-1].strip() for line in output.read_text(encoding="utf-8").splitlines()
+               if line and not line.startswith("#")]
+    if len(records) != maximum_frames or not all(len(value) == 32 for value in records):
+        raise ValueError("Video frame hashes missing or count differs from requested range")
+    return records
 
 
 def _decode_samples(command: list[str], *, timeout: float, count: int, channels: int,
@@ -225,8 +239,9 @@ def _correlation(left: array, right: array) -> float:
 
 def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                 ffmpeg: str = "ffmpeg", ffprobe: str = "ffprobe", timeout: float = 60,
-                max_total_seconds: int = 60, max_clip_bytes: int = 20 * 1024 * 1024) -> dict:
-    """Publish immutable MP3 clips with exact source interval provenance, locally."""
+                max_total_seconds: int = 60, max_clip_bytes: int = 20 * 1024 * 1024,
+                mode: str = "speech") -> dict:
+    """Publish immutable speech or audiovisual clips with exact local provenance."""
     if (not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or not math.isfinite(timeout) or timeout <= 0
         or not isinstance(max_total_seconds, int) or isinstance(max_total_seconds, bool) or max_total_seconds <= 0
         or not isinstance(max_clip_bytes, int) or isinstance(max_clip_bytes, bool) or max_clip_bytes <= 0):
@@ -253,8 +268,17 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
         if root == output_dir or root in output_dir.parents:
             if output_dir != root / manifest["job_id"] and root / manifest["job_id"] not in output_dir.parents:
                 raise ValueError("Repository runtime output must be under work/<job_id>/ or artifacts/<job_id>/")
-    if any(category not in {"speech", "dialogue", "audible_dialogue"} for category in request["requested_categories"]):
-        raise ValueError("Only speech/dialogue requested categories are supported")
+    categories = set(request["requested_categories"])
+    speech_categories = {"speech", "dialogue", "audible_dialogue"}
+    if mode == "speech":
+        if not categories or not categories <= speech_categories:
+            raise ValueError("Speech staging requires speech/dialogue categories only")
+    elif mode == "audiovisual":
+        if (len(request["requested_categories"]) != 2 or "visual" not in categories
+            or len(categories & speech_categories) != 1):
+            raise ValueError("Audiovisual staging requires both visual and speech/dialogue categories only")
+    else:
+        raise ValueError("Unsupported staging mode")
     executable = {name: shutil.which(value) for name, value in (("ffmpeg", ffmpeg), ("ffprobe", ffprobe))}
     if any(value is None for value in executable.values()):
         raise ValueError("ffmpeg and ffprobe must be available")
@@ -295,14 +319,14 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
         for source_id, (path, _) in source_paths.items():
             scan_dir = temporary / f"scan-{source_id}"
             scan_dir.mkdir()
-            decoded, video, rate = _probe_source(path, executable["ffprobe"], timeout, scan_dir)
+            decoded, video, rate, video_stream = _probe_source(path, executable["ffprobe"], timeout, scan_dir)
             issues = compare_inventory(sources[source_id], decoded)
             if issues:
                 raise ValueError(f"Manifest differs from freshly decoded source: {issues}")
-            scans[source_id] = (video, rate, decoded["audio"]["channels"], decoded["audio"]["decoded_samples"])
+            scans[source_id] = (video, rate, decoded["audio"]["channels"], decoded["audio"]["decoded_samples"], video_stream)
         for number, (source_id, start_ms, end_ms) in enumerate(ranges, 1):
             path, _ = source_paths[source_id]
-            video, rate, channels, source_samples = scans[source_id]
+            video, rate, channels, source_samples, video_stream = scans[source_id]
             fps = Fraction(video["fps"]["num"], video["fps"]["den"])
             start_frame, end_frame = Fraction(start_ms, 1000) * fps, Fraction(end_ms, 1000) * fps
             start_sample, end_sample = Fraction(start_ms, 1000) * rate, Fraction(end_ms, 1000) * rate
@@ -314,20 +338,63 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
             count = last - first
             if count * channels * 4 > 256 * 1024 * 1024:
                 raise ValueError("Decoded verification interval is too large")
-            name = f"clip-{number:04d}.mp3"
+            if mode == "audiovisual":
+                width, height = video_stream.get("width"), video_stream.get("height")
+                if (video_stream.get("pix_fmt") != "yuv420p" or isinstance(width, bool) or isinstance(height, bool)
+                    or not isinstance(width, int) or not isinstance(height, int) or width < 2 or height < 2
+                    or width % 2 or height % 2):
+                    raise ValueError("Audiovisual staging requires even-sized yuv420p video")
+                staged_width = min(width, 640)
+                staged_width -= staged_width % 2
+                staged_height = max(2, 2 * round(height * staged_width / width / 2))
+                transform = (f"scale={staged_width}:{staged_height}:flags=lanczos,"
+                             if (staged_width, staged_height) != (width, height) else "") + "format=yuv420p"
+                video_filter = (f"trim=start_frame={int(start_frame)}:end_frame={int(end_frame)},"
+                                f"setpts=PTS-STARTPTS,{transform}")
+            name = f"clip-{number:04d}.{'mp4' if mode == 'audiovisual' else 'mp3'}"
             clip_path = temporary / name
-            filtergraph = f"[0:a:{0}]atrim=start_sample={first}:end_sample={last},asetpts=PTS-STARTPTS[a]"
+            audio_filtergraph = f"[0:a:0]atrim=start_sample={first}:end_sample={last},asetpts=PTS-STARTPTS[a]"
+            filtergraph = audio_filtergraph
+            if mode == "audiovisual":
+                filtergraph = f"[0:v:0]{video_filter}[v];" + filtergraph
             encode = [executable["ffmpeg"], "-nostdin", "-v", "error", "-protocol_whitelist", "file", "-i", str(path),
-                      "-filter_complex", filtergraph, "-map", "[a]", "-vn",
-                      "-map_metadata", "-1", "-map_metadata:s:a", "-1", "-map_chapters", "-1",
-                      "-codec:a", "libmp3lame", "-q:a", "2", "-y", str(clip_path)]
+                      "-filter_complex", filtergraph]
+            if mode == "audiovisual":
+                encode += ["-map", "[v]", "-map", "[a]", "-map_metadata", "-1",
+                           "-map_metadata:s:v", "-1", "-map_metadata:s:a", "-1", "-map_chapters", "-1",
+                           "-c:v", "libx264", "-preset", "ultrafast", "-crf", "0",
+                           "-pix_fmt", "yuv420p", "-fps_mode:v", "passthrough"]
+            else:
+                encode += ["-map", "[a]", "-vn", "-map_metadata", "-1",
+                           "-map_metadata:s:a", "-1", "-map_chapters", "-1"]
+            encode += ["-codec:a", "libmp3lame", "-q:a", "2", "-y", str(clip_path)]
             log = temporary / f"encode-{number:04d}.log"
             _run(encode, timeout=timeout, max_bytes=1024 * 1024, output=log,
                  bounded_file=clip_path, bounded_file_bytes=max_clip_bytes)
             if not clip_path.is_file() or clip_path.stat().st_size == 0 or clip_path.stat().st_size > max_clip_bytes:
                 raise ValueError("Encoded clip is absent or exceeds byte limit")
+            if mode == "audiovisual":
+                clip_scan = temporary / f"clip-scan-{number:04d}"
+                clip_scan.mkdir()
+                staged_decoded, staged_video, staged_rate, staged_stream = _probe_source(
+                    clip_path, executable["ffprobe"], timeout, clip_scan)
+                if (staged_video["decoded_frame_count"] != int(end_frame - start_frame)
+                    or Fraction(staged_video["fps"]["num"], staged_video["fps"]["den"]) != fps
+                    or staged_rate != rate or staged_decoded["audio"]["decoded_samples"] != count
+                    or staged_decoded["audio"]["channels"] != channels
+                    or (staged_stream.get("width"), staged_stream.get("height")) != (staged_width, staged_height)):
+                    raise ValueError("Staged audiovisual clocks, frames, or audio samples differ")
+                source_frames = _video_hashes(["-i", str(path), "-filter_complex", f"[0:v:0]{video_filter}[v]"],
+                                              ffmpeg=executable["ffmpeg"], timeout=timeout,
+                                              maximum_frames=int(end_frame - start_frame), temporary=temporary,
+                                              filename=f"source-video-{number:04d}.md5")
+                staged_frames = _video_hashes(["-i", str(clip_path)], ffmpeg=executable["ffmpeg"], timeout=timeout,
+                                              maximum_frames=int(end_frame - start_frame), temporary=temporary,
+                                              filename=f"staged-video-{number:04d}.md5")
+                if source_frames != staged_frames:
+                    raise ValueError("Staged video decoded pixels differ from selected source frames")
             reference_cmd = [executable["ffmpeg"], "-nostdin", "-v", "error", "-protocol_whitelist", "file", "-i", str(path),
-                             "-filter_complex", filtergraph, "-map", "[a]", "-vn"]
+                             "-filter_complex", audio_filtergraph, "-map", "[a]", "-vn"]
             clip_cmd = [executable["ffmpeg"], "-nostdin", "-v", "error", "-protocol_whitelist", "file", "-i", str(clip_path), "-map", "0:a:0", "-vn"]
             reference = _decode_samples(reference_cmd, timeout=timeout, count=count, channels=channels,
                                         temporary=temporary, filename=f"source-{number:04d}.f32")
@@ -336,7 +403,7 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
             correlation = _correlation(reference, rendered)
             if correlation <= 0.98:
                 raise ValueError(f"Staged audio differs from source interval (correlation {correlation:.4f})")
-            clips.append({"clip_id": f"clip-{number:04d}", "source_id": source_id,
+            clip_record = {"clip_id": f"clip-{number:04d}", "source_id": source_id,
                           "source_path": str(path), "source_sha256": sources[source_id]["content_sha256"],
                           "source_size_bytes": path.stat().st_size,
                           "source_start_ms": start_ms, "source_end_ms": end_ms,
@@ -345,7 +412,18 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                           "audio_path": name, "audio_sha256": _sha(clip_path),
                           "audio_size_bytes": clip_path.stat().st_size,
                           "decoded_samples": count, "sample_rate": rate, "channels": channels,
-                          "waveform_correlation": correlation, "encode_command": encode})
+                          "waveform_correlation": correlation, "encode_command": encode}
+            if mode == "audiovisual":
+                clip_record.update({"media_kind": "audiovisual", "media_path": name,
+                                    "media_sha256": clip_record["audio_sha256"],
+                                    "media_size_bytes": clip_record["audio_size_bytes"],
+                                    "video_width": staged_width, "video_height": staged_height,
+                                    "video_frame_count": int(end_frame - start_frame),
+                                    "video_fps_num": fps.numerator, "video_fps_den": fps.denominator,
+                                    "video_transform": transform,
+                                    "video_decoded_frames_match": True,
+                                    "audio_decoded_samples_match": True})
+            clips.append(clip_record)
         for path, signature in original_signatures.items():
             if file_signature(path) != signature:
                 raise ValueError("Input document changed during staging")
@@ -361,7 +439,7 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                   "status": "PASS", "clips": clips}
         (temporary / "mapping.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         for path in temporary.iterdir():
-            if path.name != "mapping.json" and path.suffix != ".mp3":
+            if path.name != "mapping.json" and path.suffix not in {".mp3", ".mp4"}:
                 if path.is_dir():
                     shutil.rmtree(path)
                 else:
@@ -380,10 +458,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout", type=float, default=60)
     parser.add_argument("--max-total-seconds", type=int, default=60)
     parser.add_argument("--max-clip-bytes", type=int, default=20 * 1024 * 1024)
+    parser.add_argument("--mode", choices=("speech", "audiovisual"), default="speech")
     args = parser.parse_args(argv)
     try:
         report = stage_media(args.manifest, args.request, args.output_dir, timeout=args.timeout,
-                             max_total_seconds=args.max_total_seconds, max_clip_bytes=args.max_clip_bytes)
+                             max_total_seconds=args.max_total_seconds, max_clip_bytes=args.max_clip_bytes,
+                             mode=args.mode)
     except (OSError, ValueError) as exc:
         print(f"STAGING_ERROR: {exc}", file=sys.stderr)
         return 2

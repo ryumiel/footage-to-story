@@ -67,6 +67,14 @@ from verified inputs and normalizes offsets before canonical analysis validation
 Schema validity is not semantic validation of words or evidence; human quotation
 and candidate speech-boundary verification remain NOT_RUN.
 
+`agy-av-response.schema.json` is the separate combined-input auxiliary contract.
+Both video/audio availability fields are required. Visual and dialogue segments
+stay distinct: visual content requires null audible content; dialogue requires
+null visible content. Their candidate ranges share one verified clip clock and
+are mapped to the original source without inventing cross-modal identities.
+Overlapping windows can relate observations, but cannot establish speaker identity
+or lip synchronization. Unknown fields and unsupported mixed observations fail.
+
 ### Selects and story
 
 `evidence_refs` identify analysis segment IDs in the same job. The implemented

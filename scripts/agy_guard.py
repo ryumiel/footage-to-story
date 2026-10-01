@@ -15,6 +15,7 @@ except ImportError:
     from validate_json import ROOT, build_validator
 
 MAX_INPUT = 65536
+RESPONSE_SCHEMAS = {'agy-response.schema.json', 'agy-av-response.schema.json'}
 
 
 def _pairs(pairs):
@@ -69,7 +70,13 @@ def evaluate(policy: dict, event: dict) -> dict:
                    for key in annotations & args.keys()):
                 return answer
             payload = {key: value for key, value in args.items() if key not in annotations}
-            build_validator(ROOT / 'schemas/2.0.0/agy-response.schema.json').validate(payload)
+            schema_name = policy.get('response_schema', 'agy-response.schema.json')
+            if schema_name not in RESPONSE_SCHEMAS:
+                return answer
+            schema_path = ROOT / 'schemas/2.0.0' / schema_name
+            if policy.get('response_schema_sha256') != file_hash(schema_path):
+                return answer
+            build_validator(schema_path).validate(payload)
             answer.update(decision='allow', reason='Strict output-only completion',
                           output_sha256=hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()).hexdigest())
         except (ValidationError, ValueError, TypeError):
@@ -94,7 +101,7 @@ def evaluate(policy: dict, event: dict) -> dict:
     return answer
 
 
-def write_guard(workspace: Path, media: Path) -> dict:
+def write_guard(workspace: Path, media: Path, *, response_schema: str = 'agy-response.schema.json') -> dict:
     workspace = Path(workspace).resolve()
     media = Path(media).absolute()
     if media.is_symlink():
@@ -102,7 +109,11 @@ def write_guard(workspace: Path, media: Path) -> dict:
     media = media.resolve()
     if media.parent != workspace:
         raise ValueError('Guard requires an exact direct media file in the isolated workspace')
-    policy = {'media_path': str(media), 'media_sha256': file_hash(media), 'max_media_reads': 1}
+    if response_schema not in RESPONSE_SCHEMAS:
+        raise ValueError('Unsupported response schema')
+    schema_path = ROOT / 'schemas/2.0.0' / response_schema
+    policy = {'media_path': str(media), 'media_sha256': file_hash(media), 'max_media_reads': 1,
+              'response_schema': response_schema, 'response_schema_sha256': file_hash(schema_path)}
     agents = workspace / '.agents'
     if agents.exists():
         raise ValueError('Guard configuration already exists')

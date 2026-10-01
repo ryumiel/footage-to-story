@@ -27,10 +27,12 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
   Subtitle timing accepts original compressed audio and leaves audio-cut verification NOT_RUN.
   Preserve compressed originals; do not create persistent PCM solely for subtitle checks.
   Saved lock records require trusted historical context; resume never authorizes execution.
-  Bounded zero-origin speech extraction and the Antigravity agy adapter are implemented.
+  Bounded zero-origin speech and synchronized video/dialogue extraction and the
+  Antigravity agy adapter are implemented.
   Upload execution requires trusted-caller observed consent bound to exact input bytes,
   the sole enabled clip hook, and one native media read per budgeted attempt.
-  Provider speech boundaries and quotation accuracy remain NOT_RUN; non-speech
+  Provider visual/speech boundaries, speaker identity, and quotation accuracy remain
+  NOT_RUN; non-speech
   descriptions are unsupported. Dispatch/observed-token limits are not hard billing caps.
   Never treat schema or record conformance as proof of source validity or export readiness.
 - Use 0-based, OUT-exclusive ranges. Milliseconds locate analysis candidates;
