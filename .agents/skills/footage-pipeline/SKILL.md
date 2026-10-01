@@ -34,10 +34,10 @@ not authorize Antigravity to make editorial choices or grant tools/network acces
 ## Current execution limit
 
 Schema validation, local ffprobe reported-manifest extraction, and supplied-document
-relationship checks and bounded hash/decoded-video scans are implemented. See
-`docs/media-manifest.md`, `docs/document-integrity.md`, and `docs/media-verification.md`
-for the real commands and their limits. Refer to the roadmap for edit/timeline/audio
-timing, proxy mappings, authentic approval
+relationship checks, bounded hash/decoded-video scans, and sequential video edit
+checks are implemented. See `docs/media-manifest.md`, `docs/document-integrity.md`,
+`docs/media-verification.md`, and `docs/edit-verification.md` for real commands and
+their limits. Refer to the roadmap for audio timing, nonzero-origin/proxy mappings, authentic approval
 verification, and export. Do not invent a command
 for a missing implementation. Missing execution capability is BLOCKED, not PASS.
 

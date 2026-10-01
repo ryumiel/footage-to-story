@@ -16,8 +16,8 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
 - Current contracts are in `schemas/2.0.0/`. Unknown fields must fail, not disappear.
   Never repair a contract by inventing source IDs, evidence, dates, or permissions.
 - Keep cross-file/media invariants separate from schemas. Declared-document checks
-  and bounded source-hash/decoded-video scans are implemented; edit/timeline/audio,
-  proxy mapping, and authentic approval gates are NOT implemented.
+  source-hash/decoded-video scans, and sequential video edit checks are implemented;
+  audio timing, nonzero-origin/proxy mapping, and authentic approval gates are NOT implemented.
   Never treat schema or record conformance as proof of source validity or export readiness.
 - Use 0-based, OUT-exclusive ranges. Milliseconds locate analysis candidates;
   final source/timeline cuts use integer frame indices and rational FPS.

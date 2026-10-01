@@ -104,8 +104,10 @@ Unknown declared bounds block range checks needing them. See
 The table describes the evidence required for complete execution, not the proof
 provided by the record helpers. A separate bounded source/video scanner now checks
 current hashes, decoded counts, and exact video PTS/CFR (`docs/media-verification.md`).
-Edit bounds, proxy mappings, timeline/audio, prior locks, and authentic approval/hash
-verification remain unimplemented.
+`scripts/verify_edit.py` now reruns that scan and checks zero-origin CFR edit bounds,
+exact select-window containment, matching FPS, and sequential video timeline math
+(`docs/edit-verification.md`). Audio timing, nonzero-origin/proxy maps, prior locks,
+and authentic approval/hash verification remain unimplemented.
 
 Keep these as small application invariants as M1 develops; do not build
 another schema engine. Runtime failures should be explicit errors, not Python

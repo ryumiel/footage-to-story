@@ -28,7 +28,10 @@ still needs genuine source identity and frame-boundary evidence.
    use null/omission only for an intentional manual plan with separately verified evidence.
 6. Calculate, rather than duplicate, duration from OUT minus IN. Check source bounds,
    timeline continuity, FPS, and audio assumptions before claiming readiness.
-   The repository currently has no automated integrity implementation.
+   `docs/edit-verification.md` describes implemented fresh-media video checks;
+   audio synchronization, authentic approval, and export remain separate gates.
+   Use the implemented checks within their documented scope; passing video
+   checks alone does not establish audio synchronization or export readiness.
 7. If a necessary boundary is unknown, report BLOCKED or a non-executable note;
    do not fabricate values to force a schema-valid final plan.
 8. Validate the saved proposal:

@@ -15,6 +15,9 @@
 - Rejected composite file demuxers and disabled external MOV track references so
   a wrapper hash cannot stand in for unbound dependent media.
 - Extended synthetic tests to VFR, B frames, corrupted payloads, and truncated containers.
+- Added fresh-media sequential video edit checks with exact CFR/FPS, decoded cut
+  bounds, select-window containment, timeline continuity, rational duration, and
+  document byte bindings; audio synchronization and approval remain separate.
 
 ## Repository v3 / tooling 0.3.0 - 2026-10-01
 

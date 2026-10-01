@@ -17,10 +17,11 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Local ffprobe manifest extraction with exact-byte hashes and raw metadata evidence.
 - Cross-document record checks for IDs, references, ranges, and declared bounds/scope.
 - Bound source-byte checks and conservative decoded video timing scans for MOV/MP4 and WAV.
+- Fresh-media sequential video edit checks for source bounds, exact FPS, and timeline continuity.
 - Synthetic positive fixtures, negative tests, and explicit validation-boundary tests.
 - English instructions, migration guidance, architecture, and a design review.
 
-Edit/timeline and audio timing verification, proxy maps, FCPXML export, genuine
+Audio timing verification, nonzero-origin/proxy maps, FCPXML export, genuine
 approval capture, prior-lock verification, and live Gemini analysis remain unimplemented.
 A `SCHEMA_VALID` result is not approval to upload media or export a timeline.
 
@@ -31,7 +32,7 @@ A `SCHEMA_VALID` result is not approval to upload media or export a timeline.
 | ChatGPT | Analysis requests, selects, narrative, edit plans, editorial review |
 | Codex | Local development and explicitly delegated ChatGPT/user-side execution |
 | Antigravity + Gemini | Observe approved media and return analysis; no independent editorial decisions |
-| Deterministic code | Schema validation, inventory, document comparisons, and source/video scans now; timeline/audio/approval/export gates later |
+| Deterministic code | Schema, inventory, document, source/video, and sequential video-edit checks now; audio/approval/export gates later |
 | Human editor | Confirm facts, authorize uploads, approve exact plans, finish in Resolve |
 
 The same committed skills can be read by local agents. Visibility is not an access
@@ -51,6 +52,7 @@ scripts/validate_json.py    COMMIT: standard-library integration and CLI
 scripts/probe_manifest.py   COMMIT: local reported inventory and evidence
 scripts/check_integrity.py  COMMIT: document relationships and declared bounds
 scripts/verify_media.py     COMMIT: source hashes and decoded video timing evidence
+scripts/verify_edit.py      COMMIT: live source bounds and sequential video timeline math
 examples/contracts/        COMMIT: deliberately synthetic test documents
 tests/                      COMMIT: automated contract tests
 docs/                       COMMIT: design, compatibility, migration, review
@@ -98,9 +100,9 @@ manifest -> analysis request -> Antigravity/Gemini observations
 ```
 
 This describes the intended workflow. Contract validation, local reported-manifest
-extraction, document relationship checks, and bounded video timing scans are implemented.
-Full stage execution
-remains pending. Read `ROADMAP.md` before asking an agent to run it.
+extraction, document relationship checks, bounded video timing scans, and sequential
+video edit checks are implemented. Full stage execution remains pending.
+Read `ROADMAP.md` before asking an agent to run it.
 
 ## Contract policy
 
@@ -122,6 +124,7 @@ Legacy v2-repository documents are not silently accepted or migrated. See
 - `docs/media-manifest.md`: ffprobe CLI usage, evidence, and limitations.
 - `docs/document-integrity.md`: supplied-document checks and separate execution gates.
 - `docs/media-verification.md`: supported formats, decoded timing, identity, and scan limits.
+- `docs/edit-verification.md`: fresh source-bound checks and sequential video timeline rules.
 - `docs/schema-catalog.md`: the field-level contract decisions.
 - `docs/validation.md`: exactly what the validator does and does not prove.
 - `docs/repository-policy.md`: source versus real job data versus build outputs.

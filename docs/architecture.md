@@ -59,7 +59,9 @@ execution; they must not be silently treated as identity transforms.
 Executable helpers provide schema validation, ffprobe reported inventories with
 raw evidence (`docs/media-manifest.md`), and supplied-document comparisons
 (`docs/document-integrity.md`), and hash-bound decoded video scans
-(`docs/media-verification.md`). Edit/timeline/audio and proxy mapping gates remain pending.
+(`docs/media-verification.md`), plus fresh-media sequential video checks
+(`docs/edit-verification.md`). Audio, nonzero-origin/proxy, approval, and export
+gates remain pending.
 A schema can
 require `job_id`, but cannot establish that two separately supplied job IDs match.
 It can require a digest-shaped string, but cannot prove that the bytes were approved.

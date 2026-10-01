@@ -19,8 +19,9 @@
 - [x] Check unique IDs, supplied job consistency, cross-document references, and interval ordering.
 - [x] Check declared source bounds, request scope, and evidence interval coverage.
 - [x] Bind supported local source scans to file hashes and check decoded video counts, PTS, and CFR.
-- [ ] Verify edit bounds against current decoded media and implement source-time/proxy mappings.
-- [ ] Check sequential timeline continuity, frame counts, and audio synchronization.
+- [x] Verify edit bounds against fresh decoded media and zero-origin CFR select-time windows.
+- [x] Check exact sequential video timeline continuity, frame counts, FPS, and duration.
+- [ ] Implement nonzero-origin/source-proxy mappings and verify audio synchronization/sample cuts.
 - [ ] Capture authentic human approval and verify revision plus exact plan digest.
 - [ ] Implement and test a deterministic FCPXML exporter.
 - [x] Generate real synthetic video/audio fixtures, not just JSON placeholders.

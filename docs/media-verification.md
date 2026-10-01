@@ -80,6 +80,8 @@ and reported format comparisons; no video timing test applies.
 
 The scanner does not consume an edit plan, verify edit cut bounds, convert select
 milliseconds into frames, check timeline continuity, or verify audio alignment.
+`scripts/verify_edit.py` now reruns the scan and checks supported CFR cut bounds,
+select-window containment, and sequential video math (`docs/edit-verification.md`).
 Document references are checked separately by `scripts/check_integrity.py`.
 Proxy maps, prior locks, permission authenticity, authentic human approval and
 plan-digest verification, XML export, and actual Resolve import remain separate

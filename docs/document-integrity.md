@@ -96,8 +96,10 @@ review SHA-256 to stored plan bytes, authenticate human approval, check prior lo
 decisions, resolve profiles, or authorize export. These limitations are printed
 on every successful CLI invocation. `scripts/verify_media.py` now separately checks
 current source hashes and supported decoded video counts/PTS/CFR; see
-`docs/media-verification.md`. Its scan does not complete the remaining timeline,
-audio, proxy, approval, or export gates.
+`docs/media-verification.md`. `scripts/verify_edit.py` combines fresh scans with
+supported CFR frame/select bounds and sequential video timeline checks
+(`docs/edit-verification.md`). Audio, nonzero-origin/proxy, approval, and export
+remain separate from both helpers.
 
 In particular, a forged approval with a correctly shaped digest or a mismatched
 but correctly shaped digest can pass this record checker. Authentic approval
