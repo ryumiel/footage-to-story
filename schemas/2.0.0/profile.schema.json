@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://footage-to-story.example/schemas/2.0.0/profile.schema.json",
+  "title": "profile",
+  "type": "object",
+  "properties": {
+    "profile": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+      "maxLength": 128
+    },
+    "version": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+    },
+    "parent": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "maxLength": 128
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "priorities": {
+      "type": "object",
+      "properties": {
+        "source_integrity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "technical_quality": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dialogue": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "action": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "scenery": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "educational_value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "route_change": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "rider_interaction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "atmosphere": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "guide_explanation": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "wine_comparison": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "cellar_atmosphere": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "tasting_reaction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "rules": {
+      "type": "object",
+      "properties": {
+        "preserve_complete_thoughts": {
+          "type": "boolean"
+        },
+        "preserve_event_context": {
+          "type": "boolean"
+        },
+        "fabricate_missing_coverage": {
+          "type": "boolean"
+        },
+        "traffic_events_require_context": {
+          "type": "boolean"
+        },
+        "do_not_invent_gps": {
+          "type": "boolean"
+        },
+        "do_not_equalize_wine_screen_time": {
+          "type": "boolean"
+        },
+        "distinguish_quote_from_info_card": {
+          "type": "boolean"
+        },
+        "default_broll_seconds": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "preferred_topics": {
+      "type": "array",
+      "items": {
+        "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+      },
+      "uniqueItems": true
+    },
+    "story_pattern": {
+      "type": "array",
+      "items": {
+        "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+      },
+      "uniqueItems": true
+    },
+    "pacing": {
+      "type": "object",
+      "properties": {
+        "action_seconds": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "scenery_seconds": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "broll_seconds": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "atmosphere_seconds": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "dialogue_max_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "profile",
+    "version",
+    "parent"
+  ],
+  "additionalProperties": false
+}

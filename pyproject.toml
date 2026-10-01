@@ -10,6 +10,7 @@ requires-python = ">=3.11"
 dependencies = [
   "jsonschema[format-nongpl]>=4.24,<5",
   "referencing>=0.36,<1",
+  "PyYAML>=6.0.2,<7",
 ]
 
 [project.optional-dependencies]

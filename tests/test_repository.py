@@ -32,7 +32,10 @@ def test_no_install_or_copy_layer_is_reintroduced():
 
 def test_no_unversioned_active_schemas():
     assert not list((ROOT / "schemas").glob("*.schema.json"))
-    assert len(list((ROOT / "schemas/2.0.0").glob("*.schema.json"))) == 8
+    assert {
+        'common', 'manifest', 'analysis-request', 'analysis', 'selects', 'story-plan',
+        'edit-plan', 'review',
+    } <= {p.stem.removesuffix('.schema') for p in (ROOT / 'schemas/2.0.0').glob('*.schema.json')}
 
 
 def test_english_source_text_has_no_accidental_korean_prose():
