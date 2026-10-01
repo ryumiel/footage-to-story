@@ -39,3 +39,8 @@ python scripts/validate_json.py schemas/2.0.0/selects.schema.json work/JOB/selec
 
 `selects.json` with exact schema/job identity, profile name/integer version, and
 traceable candidate items. Do not set narrative order or final frame boundaries here.
+
+Resolve the active profile with `scripts/resolve_profile.py` and preserve its full
+parent-chain version/byte bindings. Before reuse, call `check_selects_binding`
+against current profile files. Historical locked items require the trusted caller
+context in `docs/lock-preservation.md`; a saved flag alone is not a human decision.

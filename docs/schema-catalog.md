@@ -56,14 +56,15 @@ analysis artifact.
 
 ### Selects and story
 
-`evidence_refs` currently identify analysis segment IDs in the same job. The future
-integrity gate must verify resolution. External facts and story-bible references
+`evidence_refs` identify analysis segment IDs in the same job. The implemented
+document integrity gate verifies resolution. External facts and story-bible references
 must not be inserted as if they were observed footage segment IDs.
 
 `profile_version` refers to the existing integer version in the YAML profiles.
 Scores are editorial values, not objective truth or calibrated probabilities.
-No numeric score should alter the underlying observations. A profile resolver and
-resolved-profile hash are not implemented in this revision.
+No numeric score should alter the underlying observations. The profile resolver
+stores settings and exact-byte hashes for the full parent chain in a separate
+resolved-profile contract; see `profile-resolution.md`.
 
 `transition_notes` are intentions, not proof that an effect or B-roll exists.
 A story can list missing coverage; an executable cut cannot point to missing footage.

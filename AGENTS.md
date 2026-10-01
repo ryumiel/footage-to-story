@@ -22,6 +22,9 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
   are NOT implemented. Trusted callers may pass observed explicit user approval
   bound to exact plan bytes; saved HUMAN labels alone never authorize execution.
   External-trust signature and exact plan approval-binding checks are implemented.
+  Historical lock preservation, profile resolution, local provenance imports,
+  job freshness inspection, and rational subtitle sidecars are implemented.
+  Saved lock records require trusted historical context; resume never authorizes execution.
   Never treat schema or record conformance as proof of source validity or export readiness.
 - Use 0-based, OUT-exclusive ranges. Milliseconds locate analysis candidates;
   final source/timeline cuts use integer frame indices and rational FPS.

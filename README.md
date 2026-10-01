@@ -12,7 +12,7 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Eight committed project-local skills in `.agents/skills/`; no skill-copy or
   installation script is needed for repository-local use.
 - The four editorial profiles from v2, unchanged in meaning and values.
-- Seven strict stage contracts plus a shared `$defs` resource.
+- Seven strict stage contracts plus a shared `$defs` resource and separate M2 auxiliary contracts.
 - Offline JSON Schema validation using `jsonschema` and `referencing`.
 - Reviewed Python runtime/test resolution in `uv.lock`.
 - Local ffprobe manifest extraction with exact-byte hashes and raw metadata evidence.
@@ -22,11 +22,16 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Exact zero-origin PCM sample cuts and SOURCE/MUTE checks in the fresh edit gate.
 - Trusted-conversation approval bound to exact plan bytes/revision, with optional OpenSSH verification.
 - Bounded deterministic FCPXML 1.7 export with fresh gates and pinned official DTD validation.
+- Deterministic profile inheritance with exact parent-version/byte bindings.
+- Local observation/SRT imports with preserved raw provenance and source language.
+- Historical human lock preservation through a trusted caller, with fresh export checks.
+- Immutable local job records and dependency inspection/resume without automatic editorial execution.
+- Rational subtitle sidecar mapping against fresh supported edit checks.
 - Synthetic positive fixtures, negative tests, and explicit validation-boundary tests.
 - English instructions, migration guidance, architecture, and a design review.
 
 Compressed-audio timing/conversion, nonzero-origin/proxy maps, a general
-conversation-host approval adapter, prior-lock verification, and live Gemini analysis remain unimplemented.
+conversation-host approval adapter and live Gemini analysis remain unimplemented.
 A `SCHEMA_VALID` result is not approval to upload media or export a timeline.
 
 ## Responsibility split
@@ -136,6 +141,11 @@ Legacy v2-repository documents are not silently accepted or migrated. See
 - `docs/edit-verification.md`: fresh source-bound checks and sequential video timeline rules.
 - `docs/approval-verification.md`: trust setup, exact-byte signature checks, and authority limits.
 - `docs/fcpxml-export.md`: supported export mapping, official validation, and acceptance limits.
+- `docs/profile-resolution.md`: deterministic profile inheritance and reuse bindings.
+- `docs/editorial-import.md`: supplied observations/SRT and raw provenance.
+- `docs/lock-preservation.md`: authentic historical locks and export integration.
+- `docs/job-state.md`: local stage records, freshness, and resume inspection.
+- `docs/subtitle-mapping.md`: exact cut mapping and generated SRT sidecars.
 - `docs/schema-catalog.md`: the field-level contract decisions.
 - `docs/validation.md`: exactly what the validator does and does not prove.
 - `docs/repository-policy.md`: source versus real job data versus build outputs.

@@ -20,6 +20,13 @@ profile, user authorizations, and implementation status. Preserve prior locked
 human decisions. Profile changes alter editorial choices, not observed facts;
 reanalysis is needed only where actual observation coverage is missing.
 
+Local supplied observation/SRT imports, profile resolution, historical lock checks,
+job freshness inspection, and subtitle sidecars now exist. Read
+`docs/editorial-import.md`, `docs/profile-resolution.md`, `docs/lock-preservation.md`,
+`docs/job-state.md`, and `docs/subtitle-mapping.md` for exact APIs/commands.
+`job_state.py resume` reports the next missing/stale artifact; it does not execute
+editorial decisions, authenticate saved approval, or invoke a provider/exporter.
+
 ## Delegate by responsibility
 
 - `prepare-analysis`: ChatGPT defines a bounded observation request.

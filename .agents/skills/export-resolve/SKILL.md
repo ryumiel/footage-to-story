@@ -45,3 +45,8 @@ Trusted callers can now pass observed explicit human conversation approval,
 bound to the exact plan job/revision/hash, without SSH setup. See
 `docs/approval-verification.md`. The caller owns authenticity; a saved HUMAN label
 or receipt alone is not execution authority. Optional signed verification remains.
+
+For locked selects or edits, the trusted API caller supplies `lock_record` and
+`lock_context` as documented in `docs/lock-preservation.md`. Verification runs
+before execution and again before publication. The standalone signed CLI blocks
+locked inputs because it does not replay historical human authority from disk.

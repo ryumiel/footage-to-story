@@ -37,7 +37,15 @@ contains shared definitions, not an eighth runtime stage.
 Observations remain separate from profile-dependent scoring. Switching from
 `winery` to `cycling` should reuse compatible observations, then repeat selection
 and planning. Missing kinds of observation may require bounded reanalysis.
-This cache/invalidation behavior is a requirement, not implemented runtime logic.
+Profile byte bindings and local run dependencies now implement conservative
+freshness inspection (`docs/profile-resolution.md`, `docs/job-state.md`).
+Observation import and subtitle mapping are local helpers. Inspection identifies
+stale work; ChatGPT must still supply new editorial decisions.
+
+M2 auxiliary contracts describe profile snapshots, raw import provenance,
+transcripts, historical locks, run records, and subtitle maps. They do not change
+the seven existing stage contracts. Historical lock authenticity relies on a
+trusted caller, separately from job-record freshness and current plan approval.
 
 ## Time model
 

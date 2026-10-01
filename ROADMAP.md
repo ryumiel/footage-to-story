@@ -37,11 +37,14 @@
 
 ## M2 - Editorial stage execution
 
-- [ ] Import actual transcripts/observations with provenance.
-- [ ] Implement deterministic profile resolution and record resolved profile versions.
-- [ ] Preserve prior locked decisions and invalidation rules across reruns.
-- [ ] Persist job state, input hashes, run manifests, and resumable stage execution.
-- [ ] Remap subtitles from source time into edited timeline time.
+- [x] Implement local supplied transcript/observation imports with preserved raw provenance.
+- [ ] Exercise real supplied transcripts/observations (synthetic acceptance passed).
+- [x] Implement deterministic profile resolution and record resolved parent versions/hashes.
+- [x] Preserve observed historical locked decisions and invalidate stale downstream records.
+- [x] Persist job state, input hashes, immutable run records, and resume inspection.
+  Editorial stages remain supplied by ChatGPT; resume never grants execution authority.
+- [x] Remap imported quotation cues into SOURCE cuts with rational timing and SRT sidecars.
+- [ ] Verify generated subtitle import in Resolve with permitted inputs.
 
 ## M3 - Antigravity/Gemini media-analysis adapter
 
