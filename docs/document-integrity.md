@@ -97,13 +97,15 @@ decisions, resolve profiles, or authorize export. These limitations are printed
 on every successful CLI invocation. `scripts/verify_media.py` now separately checks
 current source hashes and supported decoded video counts/PTS/CFR; see
 `docs/media-verification.md`. `scripts/verify_edit.py` combines fresh scans with
-supported CFR frame/select bounds and sequential video timeline checks
-(`docs/edit-verification.md`). Audio, nonzero-origin/proxy, approval, and export
-remain separate from both helpers.
+supported CFR frame/select bounds, sequential video timeline checks, and
+zero-origin PCM sample cuts (`docs/edit-verification.md`). Nonzero-origin/proxy
+mappings, human approval capture, and export remain pending. External-trust
+signature approval verification is a separate helper (`docs/approval-verification.md`).
 
 In particular, a forged approval with a correctly shaped digest or a mismatched
-but correctly shaped digest can pass this record checker. Authentic approval
-binding and hash verification remain a later execution gate. Reported manifest
+but correctly shaped digest can pass this record checker. Signature approval
+binding and hash verification are implemented separately in `verify_approval.py`;
+human-controlled signing authority must be enrolled externally. Reported manifest
 duration/frame counts are inventory claims, not verified decoded media bounds.
 
 ## Testing

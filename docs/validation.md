@@ -108,7 +108,8 @@ current hashes, decoded counts, and exact video PTS/CFR (`docs/media-verificatio
 exact select-window containment, matching FPS, and sequential video timeline math
 and zero-origin PCM sample cuts (`docs/edit-verification.md`). Compressed-audio
 conversion, nonzero-origin/proxy maps, prior locks,
-and authentic approval/hash verification remain unimplemented.
+and human approval capture remain unimplemented. External-trust signature and
+exact plan approval-binding checks exist separately (`docs/approval-verification.md`).
 
 Keep these as small application invariants as M1 develops; do not build
 another schema engine. Runtime failures should be explicit errors, not Python

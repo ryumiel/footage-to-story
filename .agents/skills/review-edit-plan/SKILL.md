@@ -14,7 +14,8 @@ Check story coherence, source/evidence references, complete dialogue/event conte
 repetitive coverage, explicit gaps, fact-versus-quotation handling, and unsupported
 features. Verify timing and job identity from actual inputs, not schema success alone.
 
-The existing CLI checks only individual document shape. Missing cross-file/media
+The schema CLI checks individual document shape. Separate document/media/edit
+helpers exist within their documented scope. Missing cross-file/media
 verification, an unavailable exporter, or missing genuine human approval must be
 reported as execution blockers, not hidden behind a passing schema result.
 
@@ -31,7 +32,11 @@ reported as execution blockers, not hidden behind a passing schema result.
   outstanding changes. An AI cannot self-approve by writing `reviewer_type: HUMAN`.
 
 The schema enforces record consistency, not authenticity or digest equality.
-The actual human-approval capture/hash comparison gate is still unimplemented.
+`scripts/verify_approval.py` checks external-trust signatures and exact plan
+job/revision/digest bindings (`docs/approval-verification.md`). Human approval
+capture and deployment of human-controlled signing authority remain pending.
+For that verifier, `reviewed_by` must be the registered signing principal.
+Never create a real HUMAN approval or signature on the user's behalf.
 
 ```bash
 python scripts/validate_json.py schemas/2.0.0/review.schema.json work/JOB/review.json

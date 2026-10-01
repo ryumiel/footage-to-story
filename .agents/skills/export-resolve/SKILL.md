@@ -12,8 +12,8 @@ Current input contracts live in `schemas/2.0.0/`.
 ## Present implementation status
 
 **Document, fresh-media, sequential-video, and zero-origin PCM cut checks exist.
-No FCPXML exporter or authentic approval-verification runner is implemented in
-this revision.** Do not claim to export a real timeline.
+External-trust signature and exact plan approval-binding checks exist; human
+approval capture and the FCPXML exporter remain pending.** Do not claim to export a real timeline.
 This skill records the required procedure for when those components exist.
 
 ## Required gates before an export

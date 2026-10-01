@@ -20,6 +20,7 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Bound source-byte checks and conservative decoded video timing scans for MOV/MP4 and WAV.
 - Fresh-media sequential video edit checks for source bounds, exact FPS, and timeline continuity.
 - Exact zero-origin PCM sample cuts and SOURCE/MUTE checks in the fresh edit gate.
+- External-trust OpenSSH review verification bound to exact plan bytes and revision.
 - Synthetic positive fixtures, negative tests, and explicit validation-boundary tests.
 - English instructions, migration guidance, architecture, and a design review.
 
@@ -34,7 +35,7 @@ A `SCHEMA_VALID` result is not approval to upload media or export a timeline.
 | ChatGPT | Analysis requests, selects, narrative, edit plans, editorial review |
 | Codex | Local development and explicitly delegated ChatGPT/user-side execution |
 | Antigravity + Gemini | Observe approved media and return analysis; no independent editorial decisions |
-| Deterministic code | Schema, inventory, document, source/video, and sequential video-edit checks now; PCM sample cuts now; approval/export gates later |
+| Deterministic code | Schema, inventory, document, source/video, and sequential video-edit checks now; PCM sample cuts and signature-bound approval verification now; export later |
 | Human editor | Confirm facts, authorize uploads, approve exact plans, finish in Resolve |
 
 The same committed skills can be read by local agents. Visibility is not an access
@@ -55,6 +56,7 @@ scripts/probe_manifest.py   COMMIT: local reported inventory and evidence
 scripts/check_integrity.py  COMMIT: document relationships and declared bounds
 scripts/verify_media.py     COMMIT: source hashes and decoded video timing evidence
 scripts/verify_edit.py      COMMIT: live source bounds and sequential video timeline math
+scripts/verify_approval.py  COMMIT: external-trust signatures and exact plan approval binding
 examples/contracts/        COMMIT: deliberately synthetic test documents
 tests/                      COMMIT: automated contract tests
 docs/                       COMMIT: design, compatibility, migration, review
@@ -129,6 +131,7 @@ Legacy v2-repository documents are not silently accepted or migrated. See
 - `docs/document-integrity.md`: supplied-document checks and separate execution gates.
 - `docs/media-verification.md`: supported formats, decoded timing, identity, and scan limits.
 - `docs/edit-verification.md`: fresh source-bound checks and sequential video timeline rules.
+- `docs/approval-verification.md`: trust setup, exact-byte signature checks, and authority limits.
 - `docs/schema-catalog.md`: the field-level contract decisions.
 - `docs/validation.md`: exactly what the validator does and does not prove.
 - `docs/repository-policy.md`: source versus real job data versus build outputs.

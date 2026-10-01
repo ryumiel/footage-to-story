@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - initial M1 inventory
+## Unreleased - M1 execution helpers
 
 - Added local ffprobe manifest extraction into unchanged 2.0.0 contracts.
 - Preserved raw probe metadata, command/version provenance, and exact-byte hashes.
@@ -20,6 +20,12 @@
   document byte bindings; audio synchronization and approval remain separate.
 - Captured exact Python runtime/test resolution in uv.lock and verified locked
   synchronization; documented external/build-tool deployment limits separately.
+
+- Added decoded zero-origin contiguous PCM timing and exact SOURCE/MUTE sample
+  cuts with no implicit resampling or fractional-sample rounding.
+- Added external-trust OpenSSH signature verification over exact review bytes,
+  binding job/revision and stored plan SHA-256. Human approval capture and signing
+  authority deployment remain pending; the verifier never signs or enrolls keys.
 
 ## Repository v3 / tooling 0.3.0 - 2026-10-01
 

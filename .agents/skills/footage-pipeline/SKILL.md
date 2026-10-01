@@ -37,8 +37,9 @@ Schema validation, local ffprobe reported-manifest extraction, and supplied-docu
 relationship checks, bounded hash/decoded-video scans, and sequential video edit
 and zero-origin PCM sample-cut checks are implemented. See `docs/media-manifest.md`, `docs/document-integrity.md`,
 `docs/media-verification.md`, and `docs/edit-verification.md` for real commands and
-their limits. Refer to the roadmap for compressed-audio conversion, nonzero-origin/proxy mappings, authentic approval
-verification, and export. Do not invent a command
+their limits. Refer to the roadmap for compressed-audio conversion, nonzero-origin/proxy mappings, human approval
+capture, and export. Signature-bound verification is documented in
+`docs/approval-verification.md`. Do not invent a command
 for a missing implementation. Missing execution capability is BLOCKED, not PASS.
 
 ## Report

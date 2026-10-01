@@ -24,7 +24,8 @@
 - [x] Check exact sequential video timeline continuity, frame counts, FPS, and duration.
 - [x] Verify zero-origin contiguous PCM timing and exact SOURCE/MUTE sample cuts.
 - [ ] Implement nonzero-origin/source-proxy mappings and compressed-audio timing/conversion.
-- [ ] Capture authentic human approval and verify revision plus exact plan digest.
+- [x] Verify externally trusted review signatures, job/revision, and exact plan digest.
+- [ ] Deploy human-controlled signing authority and validate genuine approval capture.
 - [ ] Implement and test a deterministic FCPXML exporter.
 - [x] Generate real synthetic video/audio fixtures, not just JSON placeholders.
 - [x] Extend media fixtures to variable-rate, corrupted, and truncated sources for timing gates.
