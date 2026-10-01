@@ -8,12 +8,12 @@ import tempfile
 try:
     from .import_editorial import sha, parse, validate, encoded, publish, parse_srt, _read
     from .check_integrity import check_documents
-    from .verify_edit import verify_edit
+    from .verify_edit import verify_subtitle_timing
     from .probe_manifest import file_signature
 except ImportError:
     from import_editorial import sha, parse, validate, encoded, publish, parse_srt, _read
     from check_integrity import check_documents
-    from verify_edit import verify_edit
+    from verify_edit import verify_subtitle_timing
     from probe_manifest import file_signature
 
 
@@ -131,8 +131,9 @@ def map_subtitles(paths: dict[str,Path], transcripts: list[Path], output: Path, 
     entries=map_cues(docs['edit-plan'],docs['manifest'],bound)
     source_stats={Path(s['path']):file_signature(Path(s['path'])) for s in docs['manifest']['sources']}
     with tempfile.TemporaryDirectory(prefix='footage-subtitle-check-') as tmp:
-        report=verify_edit(paths,Path(tmp)/'edit',ffprobe=ffprobe)
-        if report['status']!='PASS':raise ValueError('Fresh edit verification failed')
+        report=verify_subtitle_timing(paths,Path(tmp)/'edit',ffprobe=ffprobe)
+        if report['status']!='PASS' or report['scope']!='SUBTITLE_TIMING':
+            raise ValueError('Fresh subtitle timing verification failed')
         expected={stage:sha(inputs[Path(path).resolve()]) for stage,path in paths.items()}
         if report['input_sha256']!=expected:raise ValueError('Edit scan used different input bytes')
         srt=render_srt(entries)

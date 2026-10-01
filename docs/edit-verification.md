@@ -119,3 +119,12 @@ and generated PCM, compressed, shifted, muted, and fractional-sample cases at
 25/30000/1001 FPS through the CLI. `tests/test_audio_timing.py` covers decoded
 PCM timing and exact sample arithmetic. Run
 `python -m pytest -q`; machine reports belong under `artifacts/validation/`.
+
+## Subtitle-only verification
+
+`verify_subtitle_timing` shares the fresh source/video geometry checks while
+reporting audio sample-cut verification as NOT_RUN. Compressed SOURCE audio is
+accepted when a decoded audio stream exists. Its `SUBTITLE_TIMING` scope and
+`execution_authorized: false` prevent interpreting this result as export readiness.
+The full `verify_edit` API and CLI still require the implemented exact audio checks.
+Neither path replaces originals or writes persistent decoded PCM media.

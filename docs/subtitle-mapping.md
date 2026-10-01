@@ -2,7 +2,7 @@
 
 `map_subtitles.py` produces UTF-8 SRT plus a strict auxiliary mapping document.
 It supports the current zero-origin, same-FPS sequential cuts only and regenerates
-`verify_edit` from source media before publishing. Saved scan reports alone never
+`verify_subtitle_timing` from source media before publishing. Saved scan reports alone never
 permit publication. This helper does not change a plan, create timeline effects,
 write FCPXML, capture approval, or import subtitles into Resolve.
 
@@ -49,5 +49,20 @@ changes are detectable.
 
 Synthetic rational mapping and generated-media acceptance are PASS. Real
 transcript acceptance and target-application subtitle import are NOT_RUN.
-Unsupported offsets, mixed-FPS retiming, proxies, and compressed-audio conversion
+Unsupported offsets, mixed-FPS retiming, proxies, and audio conversion
 remain NOT_IMPLEMENTED.
+
+## Compressed source audio
+
+Subtitle publication accepts compressed audio in the original source container.
+It verifies fresh source identity, decoded CFR video, cut bounds, matching FPS,
+sequential timeline geometry, and the presence of SOURCE audio. It does not require
+PCM storage or perform audio conversion. FFprobe decodes media for transient timing
+metadata; no decoded waveform intermediate is written.
+
+The accompanying edit report has `scope: SUBTITLE_TIMING`,
+`audio_cut_verification: NOT_RUN`, and `execution_authorized: false`. Its PASS
+covers subtitle geometry, not sample cuts or export readiness. The exporter still
+calls the separate full `verify_edit` gate; compressed-audio cut synchronization
+and export support remain NOT_IMPLEMENTED. Preserve compressed originals by default;
+use temporary decoding only when a check actually requires it.

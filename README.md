@@ -26,7 +26,7 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Local observation/SRT imports with preserved raw provenance and source language.
 - Historical human lock preservation through a trusted caller, with fresh export checks.
 - Immutable local job records and dependency inspection/resume without automatic editorial execution.
-- Rational subtitle sidecar mapping against fresh supported edit checks.
+- Rational subtitle sidecar mapping with fresh video checks, including compressed source audio.
 - Synthetic positive fixtures, negative tests, and explicit validation-boundary tests.
 - English instructions, migration guidance, architecture, and a design review.
 

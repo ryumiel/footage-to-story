@@ -45,6 +45,7 @@
 - [x] Persist job state, input hashes, immutable run records, and resume inspection.
   Editorial stages remain supplied by ChatGPT; resume never grants execution authority.
 - [x] Remap imported quotation cues into SOURCE cuts with rational timing and SRT sidecars.
+- [x] Accept original compressed audio for subtitle timing without requiring PCM intermediates.
 - [ ] Verify generated subtitle import in Resolve with permitted inputs.
 
 ## M3 - Antigravity/Gemini media-analysis adapter

@@ -28,7 +28,7 @@ except ImportError:
     from audio_timing import sample_cut
 
 
-def analyze_edit(documents: dict, media: dict) -> dict:
+def analyze_edit(documents: dict, media: dict, *, subtitle_timing: bool = False) -> dict:
     """Compare validated records with a trusted, freshly generated scan in memory.
 
     This is an internal calculation helper, not a saved-report validation API.
@@ -42,6 +42,11 @@ def analyze_edit(documents: dict, media: dict) -> dict:
               "issues": [vars(issue) for issue in issues],
               "not_checked": ["compressed-audio priming/resampling", "proxy mappings", "prior locks",
                               "permission authenticity", "approval digest/authenticity", "export"]}
+    result.update(scope='SUBTITLE_TIMING' if subtitle_timing else 'EDIT_AUDIO_VIDEO',
+                  audio_cut_verification='NOT_RUN' if subtitle_timing else 'CHECKED',
+                  execution_authorized=False)
+    if subtitle_timing:
+        result['not_checked'].append('audio cut synchronization and export readiness')
     if issues:
         return result
     plan = documents["edit-plan"]
@@ -95,6 +100,9 @@ def analyze_edit(documents: dict, media: dict) -> dict:
                 audio = scan.get("audio")
                 if audio is None:
                     issue(path + "/audio_policy", "SOURCE_AUDIO_MISSING", "SOURCE requires a decoded audio stream; use an explicit MUTE plan for video-only media")
+                elif subtitle_timing:
+                    audio_cut = {'status': 'NOT_RUN', 'policy': 'SOURCE',
+                                 'reason': 'Subtitle timing does not verify audio sample cuts'}
                 else:
                     audio_cut = sample_cut(audio["timing"], source_in, source_out, timeline_in, fps)
                     audio_format = (audio["sample_rate"], audio["channels"])
@@ -120,6 +128,18 @@ def analyze_edit(documents: dict, media: dict) -> dict:
 
 def verify_edit(paths: dict[str, Path], output: Path, ffprobe: str = "ffprobe",
                 timeout: float = 60, max_bytes: int = 64 * 1024 * 1024) -> dict:
+    """Fresh video and exact audio-cut verification for the exporter."""
+    return _verify_edit(paths, output, ffprobe, timeout, max_bytes, subtitle_timing=False)
+
+
+def verify_subtitle_timing(paths: dict[str, Path], output: Path, ffprobe: str = "ffprobe",
+                           timeout: float = 60, max_bytes: int = 64 * 1024 * 1024) -> dict:
+    """Fresh video geometry/source identity; audio cuts remain explicitly NOT_RUN."""
+    return _verify_edit(paths, output, ffprobe, timeout, max_bytes, subtitle_timing=True)
+
+
+def _verify_edit(paths: dict[str, Path], output: Path, ffprobe: str,
+                 timeout: float, max_bytes: int, *, subtitle_timing: bool) -> dict:
     """Snapshot supplied documents, rerun decoding, then publish exact calculations."""
     if set(paths) - set(STAGES):
         raise ValueError("Unknown document stages")
@@ -141,7 +161,7 @@ def verify_edit(paths: dict[str, Path], output: Path, ffprobe: str = "ffprobe",
         media = verify_media(resolved["manifest"], scan_directory, ffprobe, timeout, max_bytes)
         if media["manifest_sha256"] != hashes["manifest"]:
             raise ValueError("Manifest changed between document validation and media scan")
-        result = analyze_edit(documents, media)
+        result = analyze_edit(documents, media, subtitle_timing=subtitle_timing)
         result.update(job_id=documents["manifest"]["job_id"], revision=documents["edit-plan"]["revision"],
                       input_sha256=hashes)
         # Recheck all documents and sources after calculations, before publication.

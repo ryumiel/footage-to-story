@@ -77,11 +77,12 @@ def test_reject_bad_inputs(fixture,fault):
     else:p['items'][0]['timeline_in_frame']=1
     with pytest.raises(ValueError):calc(fixture)
 
-def test_live_generated_media_and_raw_binding(tmp_path):
+@pytest.mark.parametrize('audio_codec', ['pcm_s16le', 'libmp3lame', 'aac'])
+def test_live_generated_media_and_raw_binding(tmp_path, audio_codec):
     if not shutil.which('ffmpeg') or not shutil.which('ffprobe'):pytest.skip('Requires media tools')
     source=tmp_path/'synthetic.mov'
     subprocess.run(['ffmpeg','-v','error','-f','lavfi','-i','testsrc2=size=64x48:rate=25:duration=2',
-                    '-f','lavfi','-i','sine=frequency=440:sample_rate=48000:duration=2','-c:v','mpeg4','-c:a','pcm_s16le',str(source)],check=True)
+                    '-f','lavfi','-i','sine=frequency=440:sample_rate=48000:duration=2','-c:v','mpeg4','-c:a',audio_codec,str(source)],check=True)
     manifest=build_manifest('synthetic-subtitles',[('src-1',source)],tmp_path/'inventory')
     manifest_path=tmp_path/'inventory/manifest.json'
     plan={'schema_version':'2.0.0','job_id':manifest['job_id'],'revision':'r1','timeline_name':'Synthetic subtitles',
@@ -94,6 +95,16 @@ def test_live_generated_media_and_raw_binding(tmp_path):
     paths={'manifest':manifest_path,'edit-plan':plan_path}
     transcript=tmp_path/'import/transcript.json'
     report=sub.map_subtitles(paths,[transcript],tmp_path/'mapped')
+    timing = load_json(tmp_path/'mapped/edit-report.json')
+    assert timing['scope'] == 'SUBTITLE_TIMING'
+    assert timing['audio_cut_verification'] == 'NOT_RUN'
+    assert timing['execution_authorized'] is False
+    assert timing['items'][0]['audio_cut']['status'] == 'NOT_RUN'
+    from scripts.verify_edit import verify_edit
+    export_check = verify_edit(paths, tmp_path/'export-check')
+    assert export_check['scope'] == 'EDIT_AUDIO_VIDEO'
+    assert export_check['status'] == ('PASS' if audio_codec == 'pcm_s16le' else 'FAIL')
+    assert not list(tmp_path.rglob('*.wav'))
     assert report['entries'][0]['end_ms']==600
     assert '00:00:00,000 --> 00:00:00,600' in (tmp_path/'mapped/subtitles.srt').read_text()
     modified=load_json(transcript);modified['manifest_sha256']='0'*64;transcript.write_text(json.dumps(modified))

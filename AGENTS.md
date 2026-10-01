@@ -24,6 +24,8 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
   External-trust signature and exact plan approval-binding checks are implemented.
   Historical lock preservation, profile resolution, local provenance imports,
   job freshness inspection, and rational subtitle sidecars are implemented.
+  Subtitle timing accepts original compressed audio and leaves audio-cut verification NOT_RUN.
+  Preserve compressed originals; do not create persistent PCM solely for subtitle checks.
   Saved lock records require trusted historical context; resume never authorizes execution.
   Never treat schema or record conformance as proof of source validity or export readiness.
 - Use 0-based, OUT-exclusive ranges. Milliseconds locate analysis candidates;
