@@ -14,7 +14,8 @@
 
 ## M1 - Deterministic non-AI execution path
 
-- [ ] Capture exact dependency resolution for the intended deployment environment.
+- [x] Capture and verify exact Python runtime/test resolution for the local target.
+- [ ] Package/pin external tools and build runtimes for a fully locked deployment.
 - [x] Extract a media manifest with ffprobe and document evidence for metadata.
 - [x] Check unique IDs, supplied job consistency, cross-document references, and interval ordering.
 - [x] Check declared source bounds, request scope, and evidence interval coverage.

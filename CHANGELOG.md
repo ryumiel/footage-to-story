@@ -18,6 +18,8 @@
 - Added fresh-media sequential video edit checks with exact CFR/FPS, decoded cut
   bounds, select-window containment, timeline continuity, rational duration, and
   document byte bindings; audio synchronization and approval remain separate.
+- Captured exact Python runtime/test resolution in uv.lock and verified locked
+  synchronization; documented external/build-tool deployment limits separately.
 
 ## Repository v3 / tooling 0.3.0 - 2026-10-01
 

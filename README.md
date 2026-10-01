@@ -14,6 +14,7 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - The four editorial profiles from v2, unchanged in meaning and values.
 - Seven strict stage contracts plus a shared `$defs` resource.
 - Offline JSON Schema validation using `jsonschema` and `referencing`.
+- Reviewed Python runtime/test resolution in `uv.lock`.
 - Local ffprobe manifest extraction with exact-byte hashes and raw metadata evidence.
 - Cross-document record checks for IDs, references, ranges, and declared bounds/scope.
 - Bound source-byte checks and conservative decoded video timing scans for MOV/MP4 and WAV.
@@ -84,7 +85,9 @@ python scripts/validate_json.py \
 
 Dependency installation may need network access. Validation itself resolves only
 registered local schemas and does not fetch references over the network.
-The dependency ranges in `pyproject.toml` are not a fully locked environment.
+For locked Python package setup use `uv sync --locked --extra dev`; see
+`docs/dependencies.md`. The pip command above does not enforce that lock. External
+tools and complete deployment packaging remain separate from Python resolution.
 
 Exit codes: **0** schema-valid; **1** data-contract violation; **2** input/schema
 configuration error. The validator does not coerce, repair, insert defaults, or
