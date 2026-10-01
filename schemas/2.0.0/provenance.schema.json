@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://footage-to-story.example/schemas/2.0.0/provenance.schema.json",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/schema_version"
+    },
+    "job_id": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "format": {
+      "enum": [
+        "CANONICAL_ANALYSIS",
+        "SRT"
+      ]
+    },
+    "supplier": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+    },
+    "raw_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "raw_name": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "stored_name": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+          }
+        },
+        "required": [
+          "role",
+          "sha256",
+          "stored_name"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "claim": {
+      "const": "SUPPLIER_DECLARED_ORIGIN; NOT AUTHENTICATED"
+    }
+  },
+  "required": [
+    "schema_version",
+    "job_id",
+    "format",
+    "supplier",
+    "raw_sha256",
+    "raw_name",
+    "inputs",
+    "claim"
+  ],
+  "additionalProperties": false
+}
