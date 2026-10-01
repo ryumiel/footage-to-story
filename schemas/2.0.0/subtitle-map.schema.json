@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://footage-to-story.example/schemas/2.0.0/subtitle-map.schema.json",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/schema_version"
+    },
+    "job_id": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "plan_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "transcript_sha256": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "srt_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "rounding": {
+      "const": "CEIL_IN_FLOOR_OUT"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "edit_id": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+          },
+          "source_id": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+          },
+          "transcript_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "cue_id": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+          },
+          "language": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+          },
+          "text": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonblank_text"
+          },
+          "source_start_ms": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonnegative_integer"
+          },
+          "source_end_ms": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+          },
+          "timeline_start_seconds": {
+            "type": "object",
+            "properties": {
+              "num": {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonnegative_integer"
+              },
+              "den": {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+              }
+            },
+            "required": [
+              "num",
+              "den"
+            ],
+            "additionalProperties": false
+          },
+          "timeline_end_seconds": {
+            "type": "object",
+            "properties": {
+              "num": {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonnegative_integer"
+              },
+              "den": {
+                "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+              }
+            },
+            "required": [
+              "num",
+              "den"
+            ],
+            "additionalProperties": false
+          },
+          "start_ms": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/nonnegative_integer"
+          },
+          "end_ms": {
+            "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/positive_integer"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit_id",
+          "source_id",
+          "transcript_sha256",
+          "cue_id",
+          "language",
+          "text",
+          "source_start_ms",
+          "source_end_ms",
+          "timeline_start_seconds",
+          "timeline_end_seconds",
+          "start_ms",
+          "end_ms",
+          "truncated"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "job_id",
+    "plan_sha256",
+    "manifest_sha256",
+    "transcript_sha256",
+    "srt_sha256",
+    "rounding",
+    "entries"
+  ],
+  "additionalProperties": false
+}
