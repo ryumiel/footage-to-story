@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+import srt
 import tempfile
 try:
     from .validate_json import ROOT, build_validator, _unique_object, _reject_constant
@@ -93,7 +94,6 @@ def import_analysis(analysis_path: Path, manifest_path: Path, request_path: Path
 
 
 TIME = r'(\d{2,}):([0-5]\d):([0-5]\d),(\d{3})'
-TIMING = re.compile('^' + TIME + r' --> ' + TIME + '$')
 
 
 def parse_srt(raw: bytes) -> list[dict]:
@@ -101,24 +101,31 @@ def parse_srt(raw: bytes) -> list[dict]:
     text = raw.decode('utf-8-sig').replace('\r\n','\n')
     if '\r' in text:
         raise ValueError('Unsupported bare carriage return')
+    # The library owns cue boundaries and timestamp decoding. This header check
+    # keeps its tolerant syntax/number coercions outside our supported contract.
+    headers = list(re.finditer(r'^([1-9]\d*)\n(' + TIME + r' --> ' + TIME + r')$',
+                               text, re.MULTILINE))
+    try:
+        subtitles = list(srt.parse(text, ignore_errors=False))
+    except (srt.SRTParseError, ValueError, OverflowError) as exc:
+        raise ValueError('Malformed SRT input') from exc
+    if not subtitles or len(headers) != len(subtitles):
+        raise ValueError('Unsupported SRT cue header')
     cues = []
     previous = 0
     indices = set()
-    for block in re.split(r'\n[ \t]*\n',text.strip('\n')):
-        lines = block.split('\n')
-        if len(lines)<3 or not re.fullmatch(r'[1-9]\d*',lines[0]):
-            raise ValueError('Malformed SRT cue index/text')
-        index = int(lines[0])
-        match = TIMING.fullmatch(lines[1])
-        if not match or index in indices:
-            raise ValueError('Malformed SRT timing or duplicate index')
-        numbers = list(map(int,match.groups()))
-        start,end = [((h*60+m)*60+s)*1000+ms for h,m,s,ms in [numbers[:4],numbers[4:]]]
-        cue_text = '\n'.join(lines[2:])
-        if start>=end or start<previous or not cue_text.strip():
+    for subtitle, header in zip(subtitles, headers):
+        index = int(header.group(1))
+        if subtitle.index != index or subtitle.proprietary or index in indices:
+            raise ValueError('Unsupported SRT index/settings or duplicate index')
+        start, end = [(value.days * 86400 + value.seconds) * 1000 +
+                      value.microseconds // 1000 for value in (subtitle.start, subtitle.end)]
+        cue_text = re.sub(r'(?:\n[ \t]*)+$', '', subtitle.content)
+        if start >= end or start < previous or not cue_text.strip():
             raise ValueError('Empty, reversed, unordered, or overlapping SRT cue')
-        cues.append({'cue_id':f'cue-{index}','raw_index':index,'start_ms':start,'end_ms':end,'text':cue_text})
-        previous=end
+        cues.append({'cue_id': f'cue-{index}', 'raw_index': index,
+                     'start_ms': start, 'end_ms': end, 'text': cue_text})
+        previous = end
         indices.add(index)
     return cues
 

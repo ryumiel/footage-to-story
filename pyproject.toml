@@ -11,6 +11,7 @@ dependencies = [
   "jsonschema[format-nongpl]>=4.24,<5",
   "referencing>=0.36,<1",
   "PyYAML>=6.0.2,<7",
+  "srt>=3.5.3,<4",
 ]
 
 [project.optional-dependencies]

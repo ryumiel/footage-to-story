@@ -24,6 +24,9 @@ accepted; normalized cues use LF, while exact raw bytes remain available.
 Cue intervals are 0-based and OUT-exclusive milliseconds. Only strict numeric cue
 indices and `HH:MM:SS,mmm --> HH:MM:SS,mmm` lines are supported. Empty, reversed,
 unordered, duplicate-index, and overlapping cues fail. Adjacent cues are allowed.
+The locked `srt` library parses cue boundaries and timestamps with
+`ignore_errors=False`; a small contract wrapper rejects its unsupported tolerant
+header forms and checks ordering/bounds. Repeated blank separator lines are accepted.
 Settings after timing lines and bare CR are unsupported. Endpoints must fit the
 manifest's known declared duration. Import checks declared bounds, not actual
 media validity. Nonzero origins/proxy maps are unsupported.
@@ -51,6 +54,6 @@ requires inspection before manual removal. Runtime paths inside this repository
 must be under `work/<job_id>/` or `artifacts/<job_id>/`; external storage is allowed.
 Auxiliary contracts do not change existing closed editorial stage contracts.
 
-Synthetic import tests are PASS. Actual supplied transcript/observation acceptance
-is NOT_RUN until permitted real inputs are provided. Provider ingestion is
-NOT_IMPLEMENTED here.
+Synthetic import tests and real published-SRT import are PASS, including exact
+raw-byte preservation. Caption accuracy against spoken audio and actual canonical
+observation import remain NOT_RUN. Provider ingestion is NOT_IMPLEMENTED here.

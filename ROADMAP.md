@@ -38,7 +38,8 @@
 ## M2 - Editorial stage execution
 
 - [x] Implement local supplied transcript/observation imports with preserved raw provenance.
-- [ ] Exercise real supplied transcripts/observations (synthetic acceptance passed).
+- [x] Exercise real supplied SRT import with preserved raw bytes (published reference captions).
+- [ ] Exercise real canonical observations with their actual analysis request.
 - [x] Implement deterministic profile resolution and record resolved parent versions/hashes.
 - [x] Preserve observed historical locked decisions and invalidate stale downstream records.
 - [x] Persist job state, input hashes, immutable run records, and resume inspection.

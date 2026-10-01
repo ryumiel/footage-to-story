@@ -85,3 +85,25 @@ def test_import_rejects_nonregular_and_oversized_inputs(inputs,tmp_path,kind):
         imp.import_srt(raw,inputs[0],tmp_path/'out',source_id='src-001',language='en',supplier='Synthetic',
                        content_kind='QUOTATION',time_origin_ms=0)
     assert not (tmp_path/'out').exists()
+
+@pytest.mark.parametrize('separator', ['\n\n\n', '\n\n\n\n', '\n \n\t\n'])
+def test_multiple_blank_separator_lines_preserve_raw_input(inputs, tmp_path, separator):
+    manifest, srt = inputs
+    raw = ('1\n00:00:00,000 --> 00:00:01,000\nFirst.' + separator +
+           '2\n00:00:02,000 --> 00:00:03,000\nSecond.\n').encode()
+    srt.write_bytes(raw)
+    output = tmp_path / 'imported'
+    transcript = run(inputs, output)
+    assert [cue['text'] for cue in transcript['cues']] == ['First.', 'Second.']
+    assert (output / 'raw-input.bin').read_bytes() == raw
+
+@pytest.mark.parametrize('header', [
+    '1.5\n00:00:00,000 --> 00:00:01,000',
+    '-1\n00:00:00,000 --> 00:00:01,000',
+    '00:00:00,000 --> 00:00:01,000',
+    '1\n00:00:00,000 --> 00:00:01,000 position:50%',
+    '1\n00:00:60,000 --> 00:01:01,000',
+])
+def test_library_tolerance_does_not_repair_unsupported_headers(header):
+    with pytest.raises(ValueError):
+        imp.parse_srt((header + '\nSynthetic text.\n').encode())
