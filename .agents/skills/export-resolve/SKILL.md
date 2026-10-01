@@ -14,8 +14,10 @@ Current input contracts live in `schemas/2.0.0/`.
 **Document, fresh-media, sequential-video, and zero-origin PCM cut checks exist.
 External-trust signature and exact plan approval-binding checks exist; a general
 conversation-host adapter remains pending. A bounded deterministic FCPXML 1.7 exporter
-and official DTD validation exist (`docs/fcpxml-export.md`).** Actual Resolve import
-acceptance is NOT_RUN; do not claim application compatibility from XML validation.
+and official DTD validation exist (`docs/fcpxml-export.md`).** Bounded synthetic
+Resolve 21 import, exact cut structure, PCM tone/silence render, and manual
+moved-source relinking have passed. Audible listening remains NOT_RUN.
+Do not infer general application compatibility from these fixture checks.
 
 ## Required gates before an export
 

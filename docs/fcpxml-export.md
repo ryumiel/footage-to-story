@@ -2,7 +2,7 @@
 
 `scripts/export_fcpxml.py` implements sequential FCPXML **1.7** serialization and
 execution preflight. A bounded synthetic Resolve 21 import passed structural checks;
-audio playback and rendered output remain **NOT_RUN**. A passing
+PCM render and moved-source relinking also passed; listening remains **NOT_RUN**. A passing
 export means the supported gates and official DTD validation passed; it does not
 mean the application imported or played the timeline correctly.
 
@@ -128,7 +128,18 @@ for the final 25 frames. The initial implicit MUTE mapping failed this check;
 the explicit `video` mapping passed on re-import without manual clip edits.
 The importer initially suggested a one-hour origin, which was explicitly changed
 to zero. This verifies imported structure for this fixture, not general compatibility.
-Audio playback, rendered sample comparison, and moved-source relinking remain
-**NOT_RUN**. Runtime evidence is kept in ignored artifacts. A general conversation-host adapter and optional human-key custody acceptance
+A two-second native Resolve render contained 96000 stereo sample frames at 48000 Hz.
+The first second retained the synthetic tone (RMS approximately 0.062499 per
+channel); the final 48000 sample frames were exactly zero. Resolve applied
+mono-to-stereo gain and brief edge fades, so SOURCE does not imply bit-for-bit
+rendered PCM preservation. Listening remains **NOT_RUN**.
+
+For relinking, an identical source copy was placed in a different folder. The
+synthetic original path was temporarily renamed and the project reopened: Resolve
+reported one missing clip. Selecting the relocated folder restored the source.
+Native OTIO export referenced that folder for both video clips and retained audio,
+with unchanged source ranges. The original path was then restored. This tests
+manual missing-source relinking for an identical file, not proxy mapping or
+automatic relinking in the exporter. Runtime evidence is kept in ignored artifacts. A general conversation-host adapter and optional human-key custody acceptance
 remain outside this implementation.
 Do not call all of M1 complete based on generated XML or synthetic signatures.

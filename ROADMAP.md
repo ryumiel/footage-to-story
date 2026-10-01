@@ -32,7 +32,8 @@
 - [x] Extend media fixtures to variable-rate, corrupted, and truncated sources for timing gates.
 - [x] Validate synthetic generated XML against the checksum-pinned official FCPXML 1.7 DTD.
 - [x] Verify synthetic Resolve 21 import, source resolution, exact cuts/duration, and SOURCE/MUTE track structure.
-- [ ] Verify Resolve audio playback/rendered samples and moved-source relinking.
+- [x] Verify native Resolve PCM render tone/silence and manual moved-source relinking.
+- [ ] Perform an audible listening check (rendered samples are verified).
 
 ## M2 - Editorial stage execution
 
