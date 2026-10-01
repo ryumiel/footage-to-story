@@ -20,6 +20,7 @@ try:
     from .validate_json import ROOT, load_json
     from .verify_approval import _read, verify_approval, _trusted_bytes, verify_conversation_approval, ConversationApproval
     from .verify_edit import verify_edit
+    from .verify_locks import TrustedLockContext, verify_locks
 except ImportError:
     from check_integrity import STAGES
     from fetch_fcpxml_dtd import DTD_SHA256
@@ -27,6 +28,7 @@ except ImportError:
     from validate_json import ROOT, load_json
     from verify_approval import _read, verify_approval, _trusted_bytes, verify_conversation_approval, ConversationApproval
     from verify_edit import verify_edit
+    from verify_locks import TrustedLockContext, verify_locks
 
 XMLLINT = Path('/usr/bin/xmllint')
 
@@ -57,12 +59,12 @@ def geometry(probe: dict, stream_index: int) -> tuple[int, int]:
     return width, height
 
 
-def render(plan: dict, media: dict, edit: dict, rasters: dict) -> bytes:
+def render(plan: dict, media: dict, edit: dict, rasters: dict, *, locks_verified: bool = False) -> bytes:
     """Internal serializer for trusted fresh gate results, not saved report input."""
     if edit['status'] != 'PASS' or media['status'] != 'PASS' or not plan['items']:
         raise ValueError('Nonempty verified edit required')
-    if any(item['locked'] for item in plan['items']):
-        raise ValueError('Prior locked-decision verification is not implemented')
+    if any(item['locked'] for item in plan['items']) and not locks_verified:
+        raise ValueError('Prior locked-decision verification is required')
     used = list(dict.fromkeys(item['source_id'] for item in plan['items']))
     shapes = {rasters[source_id] for source_id in used}
     if len(shapes) != 1:
@@ -123,11 +125,21 @@ def validate_xml(xml: bytes, dtd: bytes) -> None:
 
 
 def export(paths: dict[str, Path], signature: Path | None, dtd_path: Path, output: Path,
-           *, conversation_approval: ConversationApproval | None = None) -> dict:
+           *, conversation_approval: ConversationApproval | None = None,
+           lock_record: Path | None = None, lock_context: TrustedLockContext | None = None) -> dict:
     output = check_output_directory(output)
     if not {'manifest', 'edit-plan', 'review'} <= paths.keys() or paths.keys() - set(STAGES):
         raise ValueError('Manifest, edit plan, review, and known stages required')
     raw = {stage: _read(path) for stage, path in paths.items()}
+    if (lock_record is None) != (lock_context is None):
+        raise ValueError('Lock record and trusted historical context must be supplied together')
+    lock_paths = {stage: path for stage, path in paths.items() if stage in {'manifest', 'selects', 'edit-plan'}}
+    def check_locks():
+        return verify_locks(lock_paths, lock_record, lock_context) if lock_record is not None else None
+    locks = check_locks()
+    if locks is None and any(item['locked'] for stage in ('selects', 'edit-plan')
+                             if stage in paths for item in load_json(paths[stage])['items']):
+        raise ValueError('Prior locked-decision verification is required')
     if (signature is None) == (conversation_approval is None):
         raise ValueError('Exactly one signed or live conversation approval is required')
     signature_raw, dtd = _read(signature) if signature else None, _read(dtd_path)
@@ -159,7 +171,7 @@ def export(paths: dict[str, Path], signature: Path | None, dtd_path: Path, outpu
         used = {item['source_id'] for item in load_json(frozen['edit-plan'])['items']}
         rasters = {source['source_id']: geometry(load_json(media_dir / f'decode-{number:04d}.json'), source['video']['stream_index'])
                    for number, source in enumerate(media['sources'], 1) if source['source_id'] in used}
-        xml = render(load_json(frozen['edit-plan']), media, edit, rasters)
+        xml = render(load_json(frozen['edit-plan']), media, edit, rasters, locks_verified=locks is not None)
         validate_xml(xml, dtd)
         def publication_guard():
             # Run both before output creation and after potentially long copying.
@@ -167,6 +179,8 @@ def export(paths: dict[str, Path], signature: Path | None, dtd_path: Path, outpu
                 raise ValueError('Export inputs changed during execution')
             if check_approval() != approval:
                 raise ValueError('Signing authority changed during execution')
+            if check_locks() != locks:
+                raise ValueError('Historical locks changed during execution')
             for number, source in enumerate(media['sources'], 1):
                 provenance = load_json(media_dir / f'decode-{number:04d}-provenance.json')
                 if list(file_signature(Path(source['path']))) != provenance['stat_signature']:
@@ -177,7 +191,8 @@ def export(paths: dict[str, Path], signature: Path | None, dtd_path: Path, outpu
                   'fcpxml_version': '1.7', 'xml_sha256': hashlib.sha256(xml).hexdigest(),
                   'dtd_sha256': DTD_SHA256, 'approval': approval,
                   'timeline_frame_count': edit['timeline_frame_count'],
-                  'not_checked': ['actual Resolve import/relinking/audio playback', 'color management', 'prior locks']}
+                  'locks': locks,
+                  'not_checked': ['actual Resolve import/relinking/audio playback', 'color management'] + ([] if locks else ['historical locks not supplied'])}
         output.mkdir(parents=True, exist_ok=False)
         shutil.copytree(directory / 'check', output / 'check')
         report_pending = output / 'export-report.json.tmp'

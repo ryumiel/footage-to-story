@@ -168,6 +168,29 @@ def test_live_signed_synthetic_export_passes_dtd_and_fresh_gates(run):
     assert 'actual Resolve import/relinking/audio playback' in report['not_checked']
 
 
+def test_locked_synthetic_export_requires_live_context_and_fresh_binding(run):
+    from scripts.verify_locks import LockDecision, TrustedLockContext, capture_locks, digest
+    paths, _, dtd_path, output, _ = run
+    plan = load_json(paths['edit-plan'])
+    plan['items'][0]['locked'] = True
+    paths['edit-plan'].write_text(json.dumps(plan))
+    review = load_json(paths['review'])
+    review['edit_plan_sha256'] = digest(paths['edit-plan'])
+    paths['review'].write_text(json.dumps(review))
+    event = approval.ConversationApproval(plan['job_id'], plan['revision'], digest(paths['edit-plan']),
+                                         review['reviewed_by'], 'I approve', 'SYNTHETIC_TEST_ONLY')
+    lock_paths = {s: p for s, p in paths.items() if s != 'review'}
+    record = paths['edit-plan'].parent / 'locks.json'
+    decision = LockDecision('edit-plan', 'cut-0', 'LOCK', 'LOCK edit-plan cut-0', 'SYNTHETIC_TEST_ONLY')
+    record.write_text(json.dumps(capture_locks(lock_paths, [decision])))
+    context = TrustedLockContext(digest(record), 'SYNTHETIC_TEST_ONLY')
+    with pytest.raises(ValueError, match='locked-decision'):
+        ex.export(paths, None, dtd_path, output, conversation_approval=event)
+    report = ex.export(paths, None, dtd_path, output, conversation_approval=event,
+                       lock_record=record, lock_context=context)
+    assert report['locks']['protected_items'] == 1
+
+
 @pytest.mark.parametrize('fault', ['signature', 'plan', 'source', 'dtd', 'existing-output'])
 def test_export_refuses_tampering_without_publishing(run, fault):
     paths, signature, dtd, output, media = run

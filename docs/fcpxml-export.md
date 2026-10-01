@@ -71,7 +71,8 @@ or job documents, invoke Resolve, upload data, or make editorial choices.
 - The sequence starts at zero with NDF timecode display; this does not convert
   source timing. Timeline format derives from the shared verified raster and FPS.
   Color management is not verified or converted; no color-space claim is invented.
-- Any `locked: true` item blocks export while prior-decision verification is absent.
+- Locked selects/edits require a byte-bound historical lock record and trusted caller
+  context (`docs/lock-preservation.md`). Changed or missing protected decisions fail.
   No conversion for proxies, nonzero origins, VFR, mixed rasters, separate audio,
   transitions, overlays, J/L-cuts, or multichannel routing is performed.
 
