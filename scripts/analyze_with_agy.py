@@ -379,6 +379,7 @@ def run_analysis(manifest_path: Path, request_path: Path, output_dir: Path, *,
                  model: str = 'gemini-3.8-flash-high', max_calls: int = 4,
                  max_uploaded_seconds: int = 60, max_usage_tokens: int = 200000,
                  max_retries: int = 0, timeout: int = 90,
+                 staging_timeout: int = 60,
                  max_output_bytes: int = 2 * 1024 * 1024,
                  mode: str = 'speech') -> dict:
     """Run bounded observations; retain every attempt and fail closed."""
@@ -399,7 +400,7 @@ def run_analysis(manifest_path: Path, request_path: Path, output_dir: Path, *,
     if not model.startswith('gemini-') or not model.replace('-', '').replace('.', '').isalnum():
         raise ValueError('Expected an explicit Gemini model')
     if not all(type(n) is int and n > 0 for n in (max_calls, max_uploaded_seconds, max_usage_tokens,
-                                                   timeout, max_output_bytes)) or type(max_retries) is not int or max_retries not in (0, 1):
+                                                   timeout, staging_timeout, max_output_bytes)) or type(max_retries) is not int or max_retries not in (0, 1):
         raise ValueError('Invalid analysis limits')
     output_dir = output_path(Path(output_dir), manifest['job_id'])
     output_dir.mkdir(parents=True, mode=0o700)
@@ -411,6 +412,8 @@ def run_analysis(manifest_path: Path, request_path: Path, output_dir: Path, *,
                               'speech_accuracy': 'NOT_RUN', 'candidate_timing_accuracy': 'NOT_RUN',
                               'compressed_export_audio': 'NOT_IMPLEMENTED', 'attempts': [],
                               'token_limit_enforcement': 'OBSERVED_STREAM_AND_FINAL; NO PROVIDER HARD CAP',
+                              'limits': {'staging_timeout_seconds': staging_timeout,
+                                         'provider_timeout_seconds': timeout},
                               'manifest_sha256': _sha(manifest_raw), 'request_sha256': _sha(request_raw),
                               'authorization_ref': request['authorization_ref'],
                               'authorization_claim': 'TRUSTED_CALLER_OBSERVED; NOT SAVED_RECORD_AUTHORITY'}
@@ -426,7 +429,7 @@ def run_analysis(manifest_path: Path, request_path: Path, output_dir: Path, *,
     save()
     isolated = tempfile.TemporaryDirectory(prefix='footage-agy-')
     try:
-        stage_options = {'max_total_seconds': max_uploaded_seconds}
+        stage_options = {'max_total_seconds': max_uploaded_seconds, 'timeout': staging_timeout}
         if mode == 'audiovisual':
             stage_options['mode'] = mode
         staged = stage_media(manifest_path, request_path, output_dir / 'staged', **stage_options)

@@ -84,8 +84,9 @@ See [adapter scope and limits](docs/antigravity-analysis.md).
 - [x] Extend verified staging and single-read permissions to synchronized video/speech.
   Analysis copies support explicitly selected audio and BT.709 10-bit-to-8-bit
   conversion before 360p resizing/padding; originals retain their bit depth.
-  All selected transformed video frames, rational FPS, audio sample counts, and
-  shared zero origin are verified; compressed audio remains in the MP4.
+  Lossy H.264 CRF23 analysis copies undergo per-frame compression-tolerant visual
+  correspondence checks; rational FPS, frame count, audio sample counts, and
+  shared zero origin are verified. Compressed audio remains in the MP4.
 - [x] Preserve separate typed visual/dialogue observations on one source clock.
   A separate strict auxiliary contract leaves canonical schemas unchanged.
 - [x] Exercise actual combined ingestion against independent generated content.

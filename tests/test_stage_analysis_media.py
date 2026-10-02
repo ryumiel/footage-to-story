@@ -14,7 +14,7 @@ from array import array
 import pytest
 
 from scripts.probe_manifest import build_manifest
-from scripts.stage_analysis_media import _check_audio_contiguity, _correlation, _run, stage_media
+from scripts.stage_analysis_media import _check_audio_contiguity, _compare_video, _correlation, _run, stage_media
 
 
 pytestmark = pytest.mark.skipif(not shutil.which("ffmpeg") or not shutil.which("ffprobe"),
@@ -267,7 +267,9 @@ def test_stage_audiovisual_preserves_exact_frames_and_audio(input_pair, tmp_path
     assert (clip["source_start_frame"], clip["source_end_frame"]) == (10, 30)
     assert (clip["local_start_ms"], clip["local_end_ms"]) == (0, 800)
     assert clip["decoded_samples"] == 38400
-    assert clip["video_decoded_frames_match"] is True
+    assert clip["video_correspondence"]["status"] == "PASS"
+    assert clip["video_correspondence"]["frames_compared"] == 20
+    assert clip["video_encoding"] == {"codec": "libx264", "preset": "medium", "crf": 23}
     assert clip["audio_decoded_samples_match"] is True
     assert clip["waveform_correlation"] > .98
     assert (output / clip["media_path"]).is_file()
@@ -325,28 +327,31 @@ def test_audiovisual_rational_fps_and_deterministic_downscale(tmp_path):
     assert (clip["video_width"], clip["video_height"]) == (640, 368)
     assert clip["video_padding"] == {"left": 0, "right": 0, "top": 4, "bottom": 4}
     assert clip["decoded_samples"] == 48048
-    assert clip["video_decoded_frames_match"] is True
+    assert clip["video_correspondence"]["status"] == "PASS"
 
 
-def test_audiovisual_rejects_changed_decoded_pixels(input_pair, tmp_path, monkeypatch):
-    from scripts import stage_analysis_media as staging
-    _, manifest, request_path = input_pair
+@pytest.mark.parametrize("alteration", ["black", "color", "reverse", "missing"])
+def test_audiovisual_comparison_rejects_corrupted_content(input_pair, tmp_path, alteration):
+    movie, manifest, request_path = input_pair
     request = json.loads(request_path.read_text())
     request["requested_categories"].append("visual")
     request_path.write_text(json.dumps(request))
-    original_hashes = staging._video_hashes
-
-    def tampered_hashes(*args, **kwargs):
-        values = original_hashes(*args, **kwargs)
-        if kwargs["filename"].startswith("staged-video"):
-            values[0] = "0" * 32 if values[0] != "0" * 32 else "1" * 32
-        return values
-
-    monkeypatch.setattr(staging, "_video_hashes", tampered_hashes)
     output = tmp_path / "staged-av"
-    with pytest.raises(ValueError, match="decoded pixels differ"):
-        stage_media(manifest, request_path, output, mode="audiovisual")
-    assert not output.exists()
+    clip = stage_media(manifest, request_path, output, mode="audiovisual")["clips"][0]
+    filters = {"black": "drawbox=c=black:t=fill", "color": "hue=s=0",
+               "reverse": "reverse,setpts=N/(25*TB)",
+               "missing": "select=not(eq(n\\,5)),setpts=N/(25*TB)"}
+    tampered = tmp_path / "tampered.mp4"
+    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-i", str(output / clip["media_path"]),
+                    "-vf", filters[alteration], "-map", "0:v:0", "-map", "0:a:0",
+                    "-c:v", "libx264", "-crf", "23", "-fps_mode:v", "passthrough",
+                    "-c:a", "copy", str(tampered)], check=True, capture_output=True, timeout=30)
+    video_filter = (f"trim=start_frame={clip['source_start_frame']}:end_frame={clip['source_end_frame']},"
+                    f"setpts=PTS-STARTPTS,{clip['video_transform']}")
+    with pytest.raises(ValueError, match="Video comparison|visual comparison"):
+        _compare_video(movie, tampered, video_filter=video_filter,
+                       expected_frames=clip["video_frame_count"], ffmpeg="ffmpeg", timeout=30,
+                       temporary=tmp_path, filename="comparison.txt")
 
 
 @pytest.mark.parametrize("size,content,output_size,padding", [
@@ -378,7 +383,7 @@ def test_audiovisual_orientation_fit_and_padding(tmp_path, size, content, output
     assert (clip["video_width"], clip["video_height"]) == output_size
     assert clip["video_padding"] == padding
     assert clip["video_frame_count"] == 20
-    assert clip["video_decoded_frames_match"] is True
+    assert clip["video_correspondence"]["status"] == "PASS"
     assert clip["decoded_samples"] == 38400
 
 

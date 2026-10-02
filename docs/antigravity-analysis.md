@@ -56,9 +56,16 @@ for yuv420p. Black padding rounds both output dimensions upward to multiples of 
 chroma-aligned offsets center the content within two pixels. Standard 16:9 content
 is 640×360 inside a 640×368 output, with four pixels above and below. The local
 mapping records content dimensions and each padding edge. It encodes transformed
-frames losslessly as H.264 and keeps compressed MP3 speech in the same MP4. Fresh
-zero-origin CFR checks and per-frame decoded hashes verify correspondence against
-the same source transform. Audio sample count/correlation and shared zero origin
+frames as lossy H.264 at CRF23 with the medium preset and keeps compressed MP3
+speech in the same MP4. Fresh zero-origin CFR checks preserve exact frame count
+and rational FPS. Compression-tolerant per-frame checks compare the staged video
+with the same source transform; the mapping records their method, thresholds,
+and observed metrics. Per-frame SSIM minima are 0.90 for luma/combined and 0.80
+for each chroma plane; mean combined SSIM must reach 0.95. Comparisons stop at the
+shorter input without repeating its last frame, and must cover the requested
+frame count. Similar-looking substitutions can still pass these similarity
+thresholds. These establish bounded visual correspondence, not pixel
+identity or proof of every fine detail. Audio sample count/correlation and shared zero origin
 verify extraction synchronization. This analysis crop is not a general proxy or
 export mapping; source resolution detail can be lost through resizing.
 
@@ -181,3 +188,11 @@ source/security reviews passed. Runtime evidence remains ignored job data.
 Official provider contracts: [CLI hooks](https://antigravity.google/docs/hooks/),
 [headless mode](https://antigravity.google/docs/cli/headless/), and
 [media prompting](https://antigravity.google/docs/cli/prompting/).
+
+### Local staging resources
+
+The runner accepts `staging_timeout` separately from its provider `timeout`. Use a
+bounded longer staging timeout for slow original decoding, such as 300 seconds
+per local subprocess for the Ceretto smoke test. Default staging timeout is 60
+seconds. The encoded clip and media guard share the unchanged 20 MiB limit;
+lossy encoding reduces size but does not guarantee that every clip fits.

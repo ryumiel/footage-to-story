@@ -226,6 +226,19 @@ def test_success_preserves_provider_and_imports_candidate_offsets(setup, tmp_pat
     assert (output / 'imported' / 'raw-input.bin').read_bytes() == (output / 'analysis.json').read_bytes()
 
 
+def test_staging_timeout_is_forwarded_independently_of_provider_timeout(setup, tmp_path, monkeypatch):
+    original = runner.stage_media
+    observed = []
+    def stage_spy(manifest_path, request_path, output_dir, **kwargs):
+        observed.append(kwargs.copy())
+        return original(manifest_path, request_path, output_dir, **kwargs)
+    monkeypatch.setattr(runner, 'stage_media', stage_spy)
+    report = call(setup, tmp_path, staging_timeout=300, timeout=90)
+    assert report['status'] == 'PASS'
+    assert observed == [{'max_total_seconds': 60, 'timeout': 300}]
+    assert report['limits'] == {'staging_timeout_seconds': 300, 'provider_timeout_seconds': 90}
+
+
 def test_av_import_preserves_separate_overlapping_modalities(av_setup, tmp_path):
     report = av_call(av_setup, tmp_path)
     assert report['status'] == 'PASS' and report['mode'] == 'audiovisual'
@@ -379,7 +392,9 @@ def test_process_group_descendants_cannot_continue_after_return(tmp_path, leader
 
 
 @pytest.mark.parametrize('limits', [{'max_calls': 0}, {'max_uploaded_seconds': 0},
-                                    {'max_usage_tokens': 1}, {'max_retries': 2}])
+                                    {'max_usage_tokens': 1}, {'max_retries': 2},
+                                    {'staging_timeout': 0}, {'staging_timeout': -1},
+                                    {'staging_timeout': True}, {'staging_timeout': 1.5}])
 def test_budgets_fail_closed(setup, tmp_path, limits):
     with pytest.raises(ValueError):
         call(setup, tmp_path, **limits)

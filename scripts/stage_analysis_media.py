@@ -10,6 +10,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import shutil
 import signal
 import stat
@@ -187,17 +188,38 @@ def _probe_source(path: Path, ffprobe: str, timeout: float, temporary: Path,
     return decoded, video, rate, video_stream
 
 
-def _video_hashes(command: list[str], *, ffmpeg: str, timeout: float, maximum_frames: int,
-                  temporary: Path, filename: str) -> list[str]:
+def _compare_video(source: Path, staged: Path, *, video_filter: str, expected_frames: int,
+                   ffmpeg: str, timeout: float, temporary: Path, filename: str) -> dict:
+    """Compare every aligned transformed source frame with the lossy staged frame."""
     output = temporary / filename
-    _run([ffmpeg, "-nostdin", "-v", "error", "-protocol_whitelist", "file", *command,
-          "-map", "[v]" if "-filter_complex" in command else "0:v:0", "-f", "framemd5", "-"],
-         timeout=timeout, max_bytes=maximum_frames * 256 + 4096, output=output)
-    records = [line.rsplit(",", 1)[-1].strip() for line in output.read_text(encoding="utf-8").splitlines()
-               if line and not line.startswith("#")]
-    if len(records) != maximum_frames or not all(len(value) == 32 for value in records):
-        raise ValueError("Video frame hashes missing or count differs from requested range")
-    return records
+    graph = (f"[0:v:0]{video_filter}[reference];[1:v:0]format=yuv420p[candidate];"
+             "[reference][candidate]ssim=stats_file=-:shortest=1:repeatlast=0[comparison]")
+    _run([ffmpeg, "-nostdin", "-v", "error", "-protocol_whitelist", "file",
+          "-i", str(source), "-i", str(staged), "-filter_complex", graph,
+          "-map", "[comparison]", "-f", "null", "-"],
+         timeout=timeout, max_bytes=expected_frames * 256 + 4096, output=output)
+    rows = []
+    pattern = re.compile(r"n:(\d+) Y:([-\d.]+) U:([-\d.]+) V:([-\d.]+) All:([-\d.]+) \(.+\)")
+    for line in output.read_text(encoding="utf-8").splitlines():
+        match = pattern.fullmatch(line)
+        if match is None:
+            raise ValueError("Unrecognized video comparison record")
+        number = int(match.group(1))
+        values = tuple(float(match.group(position)) for position in range(2, 6))
+        if number != len(rows) + 1 or any(not math.isfinite(value) or not -1 <= value <= 1 for value in values):
+            raise ValueError("Invalid or reordered video comparison record")
+        rows.append(values)
+    if len(rows) != expected_frames:
+        raise ValueError("Video comparison did not cover every requested frame")
+    minimum = {name: min(row[index] for row in rows) for index, name in enumerate(("Y", "U", "V", "All"))}
+    mean_all = sum(row[3] for row in rows) / len(rows)
+    thresholds = {"Y": 0.95, "U": 0.90, "V": 0.90, "All": 0.95, "mean_all": 0.97}
+    if (any(minimum[name] < thresholds[name] for name in minimum)
+        or mean_all < thresholds["mean_all"]):
+        raise ValueError("Staged video differs beyond lossy visual comparison limits")
+    return {"status": "PASS", "method": "per-frame FFmpeg SSIM on aligned transformed source frames",
+            "frames_compared": len(rows), "minimum_ssim": minimum, "mean_all_ssim": mean_all,
+            "thresholds": thresholds, "limits": "Compression-tolerant similarity; not exact pixel identity"}
 
 
 def _video_layout(width: int, height: int) -> tuple[int, int, int, int, dict, str]:
@@ -388,7 +410,7 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
             if mode == "audiovisual":
                 encode += ["-map", "[v]", "-map", "[a]", "-map_metadata", "-1",
                            "-map_metadata:s:v", "-1", "-map_metadata:s:a", "-1", "-map_chapters", "-1",
-                           "-c:v", "libx264", "-preset", "ultrafast", "-crf", "0",
+                           "-c:v", "libx264", "-preset", "medium", "-crf", "23",
                            "-pix_fmt", "yuv420p", "-fps_mode:v", "passthrough"]
                 if source_pix_fmt == "yuv420p10le":
                     encode += ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
@@ -413,15 +435,11 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                     or staged_decoded["audio"]["channels"] != channels
                     or (staged_stream.get("width"), staged_stream.get("height")) != (staged_width, staged_height)):
                     raise ValueError("Staged audiovisual clocks, frames, or audio samples differ")
-                source_frames = _video_hashes(["-i", str(path), "-filter_complex", f"[0:v:0]{video_filter}[v]"],
-                                              ffmpeg=executable["ffmpeg"], timeout=timeout,
-                                              maximum_frames=int(end_frame - start_frame), temporary=temporary,
-                                              filename=f"source-video-{number:04d}.md5")
-                staged_frames = _video_hashes(["-i", str(clip_path)], ffmpeg=executable["ffmpeg"], timeout=timeout,
-                                              maximum_frames=int(end_frame - start_frame), temporary=temporary,
-                                              filename=f"staged-video-{number:04d}.md5")
-                if source_frames != staged_frames:
-                    raise ValueError("Staged video decoded pixels differ from selected source frames")
+                video_correspondence = _compare_video(
+                    path, clip_path, video_filter=video_filter,
+                    expected_frames=int(end_frame - start_frame), ffmpeg=executable["ffmpeg"],
+                    timeout=timeout, temporary=temporary,
+                    filename=f"visual-comparison-{number:04d}.txt")
             reference_cmd = [executable["ffmpeg"], "-nostdin", "-v", "error", "-protocol_whitelist", "file", "-i", str(path),
                              "-filter_complex", audio_filtergraph, "-map", "[a]", "-vn"]
             clip_cmd = [executable["ffmpeg"], "-nostdin", "-v", "error", "-protocol_whitelist", "file", "-i", str(clip_path), "-map", "0:a:0", "-vn"]
@@ -457,7 +475,8 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                                     "video_frame_count": int(end_frame - start_frame),
                                     "video_fps_num": fps.numerator, "video_fps_den": fps.denominator,
                                     "video_transform": transform,
-                                    "video_decoded_frames_match": True,
+                                    "video_encoding": {"codec": "libx264", "preset": "medium", "crf": 23},
+                                    "video_correspondence": video_correspondence,
                                     "audio_decoded_samples_match": True})
             clips.append(clip_record)
         for path, signature in original_signatures.items():
