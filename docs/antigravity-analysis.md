@@ -42,8 +42,13 @@ staging. This is analysis-extraction verification, not exact lossy-audio identit
 or proof of quotation correctness.
 
 Audiovisual staging retains all selected source frames and rational FPS. It bounds
-visual width to 640 pixels with a deterministic transform, encodes transformed
-frames losslessly as H.264, and keeps compressed MP3 speech in the same MP4. Fresh
+content to 640×360 for landscape, 360×640 for portrait, or 360×360 for square
+footage, without upscaling. Aspect ratio is preserved subject to even-pixel rounding
+for yuv420p. Black padding rounds both output dimensions upward to multiples of 16;
+chroma-aligned offsets center the content within two pixels. Standard 16:9 content
+is 640×360 inside a 640×368 output, with four pixels above and below. The local
+mapping records content dimensions and each padding edge. It encodes transformed
+frames losslessly as H.264 and keeps compressed MP3 speech in the same MP4. Fresh
 zero-origin CFR checks and per-frame decoded hashes verify correspondence against
 the same source transform. Audio sample count/correlation and shared zero origin
 verify extraction synchronization. This analysis crop is not a general proxy or

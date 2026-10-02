@@ -319,7 +319,9 @@ def test_audiovisual_rational_fps_and_deterministic_downscale(tmp_path):
     clip = report["clips"][0]
     assert (clip["source_start_frame"], clip["source_end_frame"]) == (30, 60)
     assert (clip["video_fps_num"], clip["video_fps_den"]) == (30000, 1001)
-    assert (clip["video_width"], clip["video_height"]) == (640, 360)
+    assert (clip["video_content_width"], clip["video_content_height"]) == (640, 360)
+    assert (clip["video_width"], clip["video_height"]) == (640, 368)
+    assert clip["video_padding"] == {"left": 0, "right": 0, "top": 4, "bottom": 4}
     assert clip["decoded_samples"] == 48048
     assert clip["video_decoded_frames_match"] is True
 
@@ -343,3 +345,36 @@ def test_audiovisual_rejects_changed_decoded_pixels(input_pair, tmp_path, monkey
     with pytest.raises(ValueError, match="decoded pixels differ"):
         stage_media(manifest, request_path, output, mode="audiovisual")
     assert not output.exists()
+
+
+@pytest.mark.parametrize("size,content,output_size,padding", [
+    ("1280x720", (640, 360), (640, 368), {"left": 0, "right": 0, "top": 4, "bottom": 4}),
+    ("720x1280", (360, 640), (368, 640), {"left": 4, "right": 4, "top": 0, "bottom": 0}),
+    ("1024x1024", (360, 360), (368, 368), {"left": 4, "right": 4, "top": 4, "bottom": 4}),
+    ("150x100", (150, 100), (160, 112), {"left": 4, "right": 6, "top": 6, "bottom": 6}),
+])
+def test_audiovisual_orientation_fit_and_padding(tmp_path, size, content, output_size, padding):
+    movie = tmp_path / "source.mov"
+    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-f", "lavfi", "-i",
+                    f"testsrc2=size={size}:rate=25:duration=1.6", "-f", "lavfi", "-i",
+                    "sine=frequency=440:sample_rate=48000:duration=1.6",
+                    "-c:v", "mpeg4", "-pix_fmt", "yuv420p", "-c:a", "libmp3lame", str(movie)],
+                   check=True, capture_output=True, timeout=30)
+    inventory = tmp_path / "inventory"
+    build_manifest("synthetic-job", [("src-1", movie)], inventory)
+    request = {"schema_version": "2.0.0", "job_id": "synthetic-job", "request_id": "req-1",
+               "runner": "antigravity", "provider": "gemini", "cloud_upload_allowed": False,
+               "authorization_ref": None,
+               "sources": [{"source_id": "src-1", "ranges": [{"start_ms": 400, "end_ms": 1200}]}],
+               "questions": ["Describe visible actions and speech."],
+               "requested_categories": ["visual", "speech"]}
+    request_path = tmp_path / "request.json"
+    request_path.write_text(json.dumps(request))
+    clip = stage_media(inventory / "manifest.json", request_path, tmp_path / "av",
+                       mode="audiovisual")["clips"][0]
+    assert (clip["video_content_width"], clip["video_content_height"]) == content
+    assert (clip["video_width"], clip["video_height"]) == output_size
+    assert clip["video_padding"] == padding
+    assert clip["video_frame_count"] == 20
+    assert clip["video_decoded_frames_match"] is True
+    assert clip["decoded_samples"] == 38400

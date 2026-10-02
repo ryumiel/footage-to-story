@@ -199,6 +199,25 @@ def _video_hashes(command: list[str], *, ffmpeg: str, timeout: float, maximum_fr
     return records
 
 
+def _video_layout(width: int, height: int) -> tuple[int, int, int, int, dict, str]:
+    """Fit content within the orientation's 360p box, then pad to 16 pixels."""
+    box_width, box_height = ((640, 360) if width > height else
+                             (360, 640) if height > width else (360, 360))
+    scale = min(Fraction(1), Fraction(box_width, width), Fraction(box_height, height))
+    content_width = max(2, 2 * (width * scale // 2))
+    content_height = max(2, 2 * (height * scale // 2))
+    output_width = 16 * ((content_width + 15) // 16)
+    output_height = 16 * ((content_height + 15) // 16)
+    left = 2 * ((output_width - content_width) // 4)
+    top = 2 * ((output_height - content_height) // 4)
+    padding = {"left": left, "right": output_width - content_width - left,
+               "top": top, "bottom": output_height - content_height - top}
+    transform = (f"scale={content_width}:{content_height}:flags=lanczos,"
+                 if (content_width, content_height) != (width, height) else "") + "format=yuv420p"
+    transform += f",pad={output_width}:{output_height}:{left}:{top}:color=black"
+    return content_width, content_height, output_width, output_height, padding, transform
+
+
 def _decode_samples(command: list[str], *, timeout: float, count: int, channels: int,
                     temporary: Path, filename: str) -> array:
     path = temporary / filename
@@ -344,11 +363,8 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                     or not isinstance(width, int) or not isinstance(height, int) or width < 2 or height < 2
                     or width % 2 or height % 2):
                     raise ValueError("Audiovisual staging requires even-sized yuv420p video")
-                staged_width = min(width, 640)
-                staged_width -= staged_width % 2
-                staged_height = max(2, 2 * round(height * staged_width / width / 2))
-                transform = (f"scale={staged_width}:{staged_height}:flags=lanczos,"
-                             if (staged_width, staged_height) != (width, height) else "") + "format=yuv420p"
+                (content_width, content_height, staged_width, staged_height,
+                 padding, transform) = _video_layout(width, height)
                 video_filter = (f"trim=start_frame={int(start_frame)}:end_frame={int(end_frame)},"
                                 f"setpts=PTS-STARTPTS,{transform}")
             name = f"clip-{number:04d}.{'mp4' if mode == 'audiovisual' else 'mp3'}"
@@ -418,6 +434,9 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                                     "media_sha256": clip_record["audio_sha256"],
                                     "media_size_bytes": clip_record["audio_size_bytes"],
                                     "video_width": staged_width, "video_height": staged_height,
+                                    "video_content_width": content_width,
+                                    "video_content_height": content_height,
+                                    "video_padding": padding,
                                     "video_frame_count": int(end_frame - start_frame),
                                     "video_fps_num": fps.numerator, "video_fps_den": fps.denominator,
                                     "video_transform": transform,
