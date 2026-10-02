@@ -1,7 +1,7 @@
 # Local Media Manifest
 
 `scripts/probe_manifest.py` reads explicitly supplied local files and writes a
-2.0.0 manifest plus raw ffprobe evidence. It does not upload, rewrite, or transcode
+2.0.0 manifest, or a 3.0.0 manifest with explicit audio-stream selection, plus raw ffprobe evidence. It does not upload, rewrite, or transcode
 sources. ffprobe is an external executable; install FFmpeg separately and ensure
 `ffprobe` is on PATH, or supply `--ffprobe /absolute/path/to/ffprobe`.
 
@@ -42,8 +42,14 @@ describes the JSON writer and stream/format metadata used here.
 | `proxy_path` | Null; no proxy generation or mapping |
 
 Cover-art streams marked `attached_pic` are excluded from video selection. Files
-with multiple remaining video streams or multiple audio streams fail because this
-manifest cannot specify a selected stream. Files without audio/video also fail.
+with multiple remaining video streams fail. Multiple audio streams require an
+explicit selection: add `--audio-stream camera-001 1` for absolute ffprobe stream
+index 1 (not audio ordinal 1). The Python API accepts
+`audio_stream_indices={"camera-001": 1}`. This produces a 3.0.0 manifest with
+`audio_stream_index`; 2.0.0 remains unchanged and rejects the new field. Without
+selection, multiple audio tracks remain ambiguous and fail. Nonexistent indices,
+non-audio indices, and selections for unknown sources fail. A default disposition
+does not imply editorial audio preference. Files without audio/video also fail.
 Identical paths, symlinks, and hard links to one file fail as duplicate source
 identities; distinct files with identical content are allowed and retain their IDs.
 

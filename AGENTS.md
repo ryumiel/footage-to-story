@@ -13,7 +13,10 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
   deterministic code performs exact transformations.
 - Use the committed Draft 2020-12 schemas with `jsonschema` and `referencing`.
   Do not create custom schema keywords, a validator engine, or model-based validation.
-- Current contracts are in `schemas/2.0.0/`. Unknown fields must fail, not disappear.
+- Stage contracts are in `schemas/2.0.0/`; explicit audio-selection manifests use
+  `schemas/3.0.0/manifest.schema.json`, with corresponding 3.0.0 lock snapshots.
+  Readers must select the exact supported version.
+  Unknown fields must fail, not disappear.
   Never repair a contract by inventing source IDs, evidence, dates, or permissions.
 - Keep cross-file/media invariants separate from schemas. Declared-document checks,
   source-hash/decoded-video scans, and sequential video edit checks are implemented;

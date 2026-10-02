@@ -35,6 +35,54 @@ def test_preserves_snapshot_and_source(job):
     assert verify_locks(paths, record, context)['protected_items'] == 1
 
 
+def test_version_three_manifest_is_validated_for_lock_capture_and_verification(job):
+    paths, docs, record, _, _ = job
+    docs['manifest']['schema_version'] = '3.0.0'
+    locked_source = docs['edit-plan']['items'][0]['source_id']
+    next(entry for entry in docs['manifest']['sources'] if entry['source_id'] == locked_source)['audio_stream_index'] = 2
+    paths['manifest'].write_text(json.dumps(docs['manifest']))
+    item_id = docs['edit-plan']['items'][0]['edit_id']
+    event = LockDecision('edit-plan', item_id, 'LOCK', f'LOCK edit-plan {item_id}', 'SYNTHETIC_TEST_ONLY')
+    record.write_text(json.dumps(capture_locks(paths, [event])))
+    context = TrustedLockContext(digest(record), 'SYNTHETIC_TEST_ONLY')
+    assert json.loads(record.read_text())['schema_version'] == '3.0.0'
+    assert json.loads(record.read_text())['locks'][0]['source_audio_stream_index'] == 2
+    assert verify_locks(paths, record, context)['protected_items'] == 1
+
+    next(entry for entry in docs['manifest']['sources'] if entry['source_id'] == locked_source)['audio_stream_index'] = 1
+    paths['manifest'].write_text(json.dumps(docs['manifest']))
+    with pytest.raises(ValueError, match='audio stream selection changed'):
+        verify_locks(paths, record, context)
+    with pytest.raises(ValueError, match='audio stream selection changed'):
+        capture_locks(paths, [event], previous=record, context=context)
+
+
+def test_legacy_lock_cannot_cover_new_explicit_audio_selection(job):
+    paths, docs, record, context, _ = job
+    locked_source = docs['edit-plan']['items'][0]['source_id']
+    docs['manifest']['schema_version'] = '3.0.0'
+    next(entry for entry in docs['manifest']['sources'] if entry['source_id'] == locked_source)['audio_stream_index'] = 2
+    paths['manifest'].write_text(json.dumps(docs['manifest']))
+    with pytest.raises(ValueError, match='Legacy lock'):
+        verify_locks(paths, record, context)
+    item_id = docs['edit-plan']['items'][0]['edit_id']
+    event = LockDecision('edit-plan', item_id, 'LOCK', f'LOCK edit-plan {item_id}', 'SYNTHETIC_TEST_ONLY')
+    with pytest.raises(ValueError, match='Legacy lock'):
+        capture_locks(paths, [event], previous=record, context=context)
+
+
+@pytest.mark.parametrize('version', ['2.0.0', '4.0.0'])
+def test_lock_capture_rejects_unregistered_manifest_selection(job, version):
+    paths, docs, _, _, _ = job
+    docs['manifest']['schema_version'] = version
+    docs['manifest']['sources'][0]['audio_stream_index'] = 2
+    paths['manifest'].write_text(json.dumps(docs['manifest']))
+    item_id = docs['edit-plan']['items'][0]['edit_id']
+    event = LockDecision('edit-plan', item_id, 'LOCK', f'LOCK edit-plan {item_id}', 'SYNTHETIC_TEST_ONLY')
+    with pytest.raises(ValueError):
+        capture_locks(paths, [event])
+
+
 @pytest.mark.parametrize('fault', ['remove', 'range', 'flag', 'audio', 'id', 'reason'])
 def test_locked_changes_fail(job, fault):
     paths, docs, record, context, _ = job

@@ -62,7 +62,15 @@ def check_documents(documents: dict[str, Any]) -> list[IntegrityIssue]:
     for stage in STAGES:
         if stage not in documents:
             continue
-        validator = build_validator(ROOT / f"schemas/2.0.0/{stage}.schema.json")
+        if stage == "manifest":
+            version = documents[stage].get("schema_version") if isinstance(documents[stage], dict) else None
+            if version not in ("2.0.0", "3.0.0"):
+                issue(stage, "/schema_version", "SCHEMA_INVALID", "Unsupported manifest schema version")
+                continue
+            schema_path = ROOT / f"schemas/{version}/manifest.schema.json"
+            validator = build_validator(schema_path, ROOT / "schemas")
+        else:
+            validator = build_validator(ROOT / f"schemas/2.0.0/{stage}.schema.json")
         errors = sorted(validator.iter_errors(documents[stage]),
                         key=lambda error: (json_pointer(error.absolute_path), error.message))
         for error in errors:

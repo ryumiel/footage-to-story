@@ -29,6 +29,53 @@ def test_manifest_fresh_and_source_mutation(tmp_path):
     assert inspect_job(tmp_path / 'state', 'synthetic-demo')['stages']['manifest'] == 'STALE'
 
 
+def test_version_three_manifest_is_fresh_and_binds_its_schema(tmp_path):
+    path = manifest(tmp_path)
+    value = json.loads(path.read_text())
+    value['schema_version'] = '3.0.0'
+    value['sources'][0]['audio_stream_index'] = 2
+    path.write_text(json.dumps(value))
+    state = tmp_path / 'state'
+    record = record_run(state, 'synthetic-demo', 'manifest', {}, {'manifest': path})
+    assert inspect_job(state, 'synthetic-demo')['stages']['manifest'] == 'FRESH'
+    schema_binding = next(item for item in record['tools'] if item['name'] == '3.0.0-manifest.schema.json')
+    assert schema_binding['path'] == str(ROOT / 'schemas/3.0.0/manifest.schema.json')
+    assert len(schema_binding['sha256']) == 64
+
+
+def test_version_three_lock_input_is_validated_and_schema_bound(tmp_path):
+    path = manifest(tmp_path)
+    value = json.loads(path.read_text())
+    value['schema_version'] = '3.0.0'
+    value['sources'][0]['audio_stream_index'] = 2
+    path.write_text(json.dumps(value))
+    locks = tmp_path / 'locks.json'
+    locks.write_text(json.dumps({
+        'schema_version': '3.0.0', 'job_id': 'synthetic-demo', 'locks': [],
+        'events': [{'stage': 'edit-plan', 'item_id': 'synthetic-item', 'action': 'UNLOCK',
+                    'user_message': 'UNLOCK edit-plan synthetic-item',
+                    'context_reference': 'SYNTHETIC_TEST_ONLY'}],
+        'previous_sha256': None,
+    }))
+    state = tmp_path / 'state'
+    record = record_run(state, 'synthetic-demo', 'manifest', {'locks': locks}, {'manifest': path})
+    assert inspect_job(state, 'synthetic-demo')['stages']['manifest'] == 'FRESH'
+    assert any(item['name'] == '3.0.0-locks.schema.json' for item in record['tools'])
+    locks.write_text(locks.read_text() + '\n')
+    assert inspect_job(state, 'synthetic-demo')['stages']['manifest'] == 'STALE'
+
+
+@pytest.mark.parametrize('version', ['2.0.0', '4.0.0'])
+def test_job_state_rejects_unsupported_manifest_selection(tmp_path, version):
+    path = manifest(tmp_path)
+    value = json.loads(path.read_text())
+    value['schema_version'] = version
+    value['sources'][0]['audio_stream_index'] = 2
+    path.write_text(json.dumps(value))
+    with pytest.raises(StateError):
+        record_run(tmp_path / 'state', 'synthetic-demo', 'manifest', {}, {'manifest': path})
+
+
 def test_missing_corrupt_output_and_immutable_records(tmp_path):
     path = manifest(tmp_path)
     state = tmp_path / 'state'

@@ -84,7 +84,7 @@ def analyze_video(stream: dict, frames: list[dict]) -> dict:
     return result
 
 
-def summarize_decode(probe: dict) -> dict:
+def summarize_decode(probe: dict, audio_stream_index: int | None = None) -> dict:
     streams, frames = probe.get("streams"), probe.get("frames")
     if not isinstance(streams, list) or not all(isinstance(s, dict) for s in streams):
         raise ValueError("Decode evidence must contain stream objects")
@@ -98,8 +98,15 @@ def summarize_decode(probe: dict) -> dict:
     videos = [s for s in streams if s.get("codec_type") == "video"
               and not s.get("disposition", {}).get("attached_pic")]
     audios = [s for s in streams if s.get("codec_type") == "audio"]
-    if len(videos) > 1 or len(audios) > 1 or not (videos or audios):
+    if len(videos) > 1 or not (videos or audios):
         raise ValueError("Exactly one usable video and/or audio stream is supported")
+    if audio_stream_index is not None and (type(audio_stream_index) is not int or
+                                           audio_stream_index < 0 or audio_stream_index > MAX_INTEGER):
+        raise ValueError("Audio stream selector must be a nonnegative integer")
+    if len(audios) > 1 and audio_stream_index is None:
+        raise ValueError("Multiple audio streams require an explicit selector")
+    if audio_stream_index is not None and not any(s["index"] == audio_stream_index for s in audios):
+        raise ValueError("Selected stream is absent or not audio")
     by_index = {s["index"]: s for s in streams}
     for frame in frames:
         index = tick(frame.get("stream_index"))
@@ -109,7 +116,8 @@ def summarize_decode(probe: dict) -> dict:
     audio = None
     issues = list(video["issues"]) if video else []
     if audios:
-        stream = audios[0]
+        stream = (next(s for s in audios if s["index"] == audio_stream_index)
+                  if audio_stream_index is not None else audios[0])
         decoded = [f for f in frames if f["stream_index"] == stream["index"]]
         samples = [positive_integer(f.get("nb_samples")) for f in decoded]
         if not decoded or any(sample is None for sample in samples):
@@ -146,6 +154,8 @@ def compare_inventory(source: dict, decoded: dict) -> list[str]:
     for field, name in (("audio_sample_rate", "sample_rate"), ("audio_channels", "channels")):
         if source.get(field) is not None and (audio is None or source[field] != audio[name]):
             issues.append("AUDIO_FORMAT_MISMATCH")
+    if "audio_stream_index" in source and (audio is None or source["audio_stream_index"] != audio["stream_index"]):
+        issues.append("AUDIO_STREAM_INDEX_MISMATCH")
     return issues
 
 
@@ -217,7 +227,7 @@ def verify_media(manifest_path: Path, output: Path, ffprobe: str = "ffprobe",
             media_format = probe.get("format")
             if not isinstance(media_format, dict) or media_format.get("format_name") not in {"mov,mp4,m4a,3gp,3g2,mj2", "wav"}:
                 raise ValueError("Only self-contained MOV/MP4-family or WAV inputs are supported")
-            decoded = summarize_decode(probe)
+            decoded = summarize_decode(probe, source.get("audio_stream_index"))
             issues = decoded["issues"] + compare_inventory(source, decoded)
             selected_index = (decoded["video"] or decoded["audio"])["stream_index"]
             selected = next(s for s in probe["streams"] if s["index"] == selected_index)

@@ -4,7 +4,7 @@ A reusable, source-traceable video editing workflow with **ChatGPT as the primar
 editorial orchestrator**, **Antigravity + Gemini for bounded video/audio analysis
 only**, and **DaVinci Resolve Free as the target editing environment**.
 
-**Repository revision:** v3 / tooling 0.3.0. **Stage contracts:** 2.0.0.
+**Repository revision:** v3 / tooling 0.3.0. **Stage contracts:** 2.0.0; explicit audio-selection manifests and lock snapshots: 3.0.0.
 This is a reviewed skills-and-contracts foundation, not a finished automatic editor.
 
 ## What is available
@@ -15,7 +15,7 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Seven strict stage contracts plus a shared `$defs` resource and separate M2/M3 auxiliary contracts.
 - Offline JSON Schema validation using `jsonschema` and `referencing`.
 - Reviewed Python runtime/test resolution in `uv.lock`.
-- Local ffprobe manifest extraction with exact-byte hashes and raw metadata evidence.
+- Local ffprobe manifest extraction with exact-byte hashes, raw metadata evidence, and explicit audio-track selection.
 - Cross-document record checks for IDs, references, ranges, and declared bounds/scope.
 - Bound source-byte checks and conservative decoded video timing scans for MOV/MP4 and WAV.
 - Fresh-media sequential video edit checks for source bounds, exact FPS, and timeline continuity.
@@ -129,7 +129,9 @@ Read `ROADMAP.md` before asking an agent to run it.
 
 ## Contract policy
 
-Every stage document carries `schema_version: "2.0.0"` and `job_id`. Each schema
+Documents carry an exact `schema_version` and `job_id`. Editorial stage documents
+remain 2.0.0; explicit audio-selection manifests and corresponding lock snapshots
+use 3.0.0. Each schema
 has a versioned, absolute `$id`. Concrete objects reject unknown properties.
 `scores` is the sole intentional dynamic-key object and constrains both keys and
 values. Unknown metadata is explicit `null` where permitted, not guessed.

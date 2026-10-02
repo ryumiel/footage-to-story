@@ -17,6 +17,8 @@
 - [x] Capture and verify exact Python runtime/test resolution for the local target.
 - [ ] Package/pin external tools and build runtimes for a fully locked deployment.
 - [x] Extract a media manifest with ffprobe and document evidence for metadata.
+  Explicit audio-track selection uses a separately versioned 3.0.0 manifest;
+  legacy 2.0.0 manifests remain supported. Multi-track final export remains unsupported.
 - [x] Check unique IDs, supplied job consistency, cross-document references, and interval ordering.
 - [x] Check declared source bounds, request scope, and evidence interval coverage.
 - [x] Bind supported local source scans to file hashes and check decoded video counts, PTS, and CFR.
@@ -80,6 +82,8 @@ See [adapter scope and limits](docs/antigravity-analysis.md).
   retention is outside the adapter's control.
 
 - [x] Extend verified staging and single-read permissions to synchronized video/speech.
+  Analysis copies support explicitly selected audio and BT.709 10-bit-to-8-bit
+  conversion before 360p resizing/padding; originals retain their bit depth.
   All selected transformed video frames, rational FPS, audio sample counts, and
   shared zero origin are verified; compressed audio remains in the MP4.
 - [x] Preserve separate typed visual/dialogue observations on one source clock.

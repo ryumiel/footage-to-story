@@ -154,16 +154,17 @@ def _run(command: list[str], *, timeout: float, max_bytes: int, output: Path,
             process.wait()
 
 
-def _probe_source(path: Path, ffprobe: str, timeout: float, temporary: Path) -> tuple[dict, dict, int, dict]:
+def _probe_source(path: Path, ffprobe: str, timeout: float, temporary: Path,
+                  audio_stream_index: int | None = None) -> tuple[dict, dict, int, dict]:
     out = temporary / "scan.json"
     _run([ffprobe, "-v", "error", "-protocol_whitelist", "file", "-enable_drefs", "0",
           "-show_frames", "-show_streams", "-show_format", "-show_entries",
-          "frame=stream_index,media_type,pts,duration,nb_samples,sample_fmt,channels,side_data_list,width,height,interlaced_frame:stream=index,codec_type,time_base,start_time,sample_rate,channels,avg_frame_rate,width,height,pix_fmt,disposition:format=format_name",
+          "frame=stream_index,media_type,pts,duration,nb_samples,sample_fmt,channels,side_data_list,width,height,interlaced_frame:stream=index,codec_type,time_base,start_time,sample_rate,channels,avg_frame_rate,width,height,pix_fmt,color_space,color_primaries,color_transfer,disposition:format=format_name",
           "-of", "json", str(path)], timeout=timeout, max_bytes=64 * 1024 * 1024, output=out)
     probe = _load_document(out, 64 * 1024 * 1024)
     if probe.get("format", {}).get("format_name") != "mov,mp4,m4a,3gp,3g2,mj2":
         raise ValueError("Speech staging supports self-contained MOV/MP4 only")
-    decoded = summarize_decode(probe)
+    decoded = summarize_decode(probe, audio_stream_index=audio_stream_index)
     video, audio = decoded["video"], decoded["audio"]
     if video is None or audio is None:
         raise ValueError("Speech staging requires video and audio")
@@ -338,14 +339,18 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
         for source_id, (path, _) in source_paths.items():
             scan_dir = temporary / f"scan-{source_id}"
             scan_dir.mkdir()
-            decoded, video, rate, video_stream = _probe_source(path, executable["ffprobe"], timeout, scan_dir)
+            decoded, video, rate, video_stream = _probe_source(
+                path, executable["ffprobe"], timeout, scan_dir,
+                audio_stream_index=sources[source_id].get("audio_stream_index"))
             issues = compare_inventory(sources[source_id], decoded)
             if issues:
                 raise ValueError(f"Manifest differs from freshly decoded source: {issues}")
-            scans[source_id] = (video, rate, decoded["audio"]["channels"], decoded["audio"]["decoded_samples"], video_stream)
+            scans[source_id] = (video, rate, decoded["audio"]["channels"],
+                                decoded["audio"]["decoded_samples"], video_stream,
+                                decoded["audio"]["stream_index"])
         for number, (source_id, start_ms, end_ms) in enumerate(ranges, 1):
             path, _ = source_paths[source_id]
-            video, rate, channels, source_samples, video_stream = scans[source_id]
+            video, rate, channels, source_samples, video_stream, audio_index = scans[source_id]
             fps = Fraction(video["fps"]["num"], video["fps"]["den"])
             start_frame, end_frame = Fraction(start_ms, 1000) * fps, Fraction(end_ms, 1000) * fps
             start_sample, end_sample = Fraction(start_ms, 1000) * rate, Fraction(end_ms, 1000) * rate
@@ -359,17 +364,22 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                 raise ValueError("Decoded verification interval is too large")
             if mode == "audiovisual":
                 width, height = video_stream.get("width"), video_stream.get("height")
-                if (video_stream.get("pix_fmt") != "yuv420p" or isinstance(width, bool) or isinstance(height, bool)
+                source_pix_fmt = video_stream.get("pix_fmt")
+                if (source_pix_fmt not in {"yuv420p", "yuv420p10le"} or isinstance(width, bool) or isinstance(height, bool)
                     or not isinstance(width, int) or not isinstance(height, int) or width < 2 or height < 2
                     or width % 2 or height % 2):
-                    raise ValueError("Audiovisual staging requires even-sized yuv420p video")
+                    raise ValueError("Audiovisual staging requires even-sized yuv420p or yuv420p10le video")
+                if source_pix_fmt == "yuv420p10le" and any(
+                    video_stream.get(field) != "bt709" for field in ("color_space", "color_primaries", "color_transfer")
+                ):
+                    raise ValueError("10-bit audiovisual staging requires explicit BT.709 source color tags")
                 (content_width, content_height, staged_width, staged_height,
                  padding, transform) = _video_layout(width, height)
                 video_filter = (f"trim=start_frame={int(start_frame)}:end_frame={int(end_frame)},"
                                 f"setpts=PTS-STARTPTS,{transform}")
             name = f"clip-{number:04d}.{'mp4' if mode == 'audiovisual' else 'mp3'}"
             clip_path = temporary / name
-            audio_filtergraph = f"[0:a:0]atrim=start_sample={first}:end_sample={last},asetpts=PTS-STARTPTS[a]"
+            audio_filtergraph = f"[0:{audio_index}]atrim=start_sample={first}:end_sample={last},asetpts=PTS-STARTPTS[a]"
             filtergraph = audio_filtergraph
             if mode == "audiovisual":
                 filtergraph = f"[0:v:0]{video_filter}[v];" + filtergraph
@@ -380,6 +390,9 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                            "-map_metadata:s:v", "-1", "-map_metadata:s:a", "-1", "-map_chapters", "-1",
                            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "0",
                            "-pix_fmt", "yuv420p", "-fps_mode:v", "passthrough"]
+                if source_pix_fmt == "yuv420p10le":
+                    encode += ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
+                               "-x264-params", "colorprim=bt709:transfer=bt709:colormatrix=bt709"]
             else:
                 encode += ["-map", "[a]", "-vn", "-map_metadata", "-1",
                            "-map_metadata:s:a", "-1", "-map_chapters", "-1"]
@@ -428,6 +441,7 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                           "audio_path": name, "audio_sha256": _sha(clip_path),
                           "audio_size_bytes": clip_path.stat().st_size,
                           "decoded_samples": count, "sample_rate": rate, "channels": channels,
+                          "source_audio_stream_index": audio_index,
                           "waveform_correlation": correlation, "encode_command": encode}
             if mode == "audiovisual":
                 clip_record.update({"media_kind": "audiovisual", "media_path": name,
@@ -437,6 +451,9 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                                     "video_content_width": content_width,
                                     "video_content_height": content_height,
                                     "video_padding": padding,
+                                    "source_video_pix_fmt": source_pix_fmt,
+                                    "video_conversion": ("bt709_10bit_to_yuv420p8" if source_pix_fmt == "yuv420p10le"
+                                                         else "yuv420p8_to_yuv420p8"),
                                     "video_frame_count": int(end_frame - start_frame),
                                     "video_fps_num": fps.numerator, "video_fps_den": fps.denominator,
                                     "video_transform": transform,

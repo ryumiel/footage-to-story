@@ -73,9 +73,34 @@ def test_cover_art_does_not_create_video_timing(probe):
 
 @pytest.mark.parametrize("kind", ["video", "audio"])
 def test_ambiguous_streams_fail(probe, kind):
-    probe["streams"].append(deepcopy(next(s for s in probe["streams"] if s["codec_type"] == kind)))
+    extra = deepcopy(next(s for s in probe["streams"] if s["codec_type"] == kind))
+    extra["index"] = 2
+    probe["streams"].append(extra)
     with pytest.raises(ValueError, match="Multiple"):
         normalize(probe)
+
+
+def test_duplicate_stream_indices_reject_even_with_audio_selector(probe):
+    probe["streams"].append(deepcopy(probe["streams"][1]))
+    with pytest.raises(ValueError, match="distinct"):
+        pm.normalize_probe("synthetic-source", Path("/synthetic/clip.mov"), probe,
+                           "0" * 64, "probe-0001.json", audio_stream_index=1)
+
+
+def test_explicit_audio_selector_resolves_multiple_tracks(probe):
+    probe["streams"].append({"index": 2, "codec_type": "audio", "sample_rate": "44100", "channels": 1})
+    with pytest.raises(ValueError, match="require an explicit selector"):
+        normalize(probe)
+    selected = pm.normalize_probe("synthetic-source", Path("/synthetic/clip.mov"),
+                                  probe, "0" * 64, "probe-0001.json",
+                                  audio_stream_index=2, record_audio_stream_index=True)
+    assert selected["audio_stream_index"] == 2
+    assert selected["audio_sample_rate"] == 44100 and selected["audio_channels"] == 1
+    assert any("audio stream index: 2" in note for note in selected["notes"])
+    for wrong in (0, 3, -1, True):
+        with pytest.raises(ValueError):
+            pm.normalize_probe("synthetic-source", Path("/synthetic/clip.mov"),
+                               probe, "0" * 64, "probe-0001.json", audio_stream_index=wrong)
 
 
 @pytest.mark.parametrize("payload", [{}, {"streams": []}, {"streams": [None]},
@@ -115,6 +140,50 @@ def test_bundle_has_exact_file_hash_and_raw_evidence(tmp_path, mock_probe):
     assert evidence["command"][3:5] == ["-protocol_whitelist", "file"]
     assert evidence["content_sha256"] == source["content_sha256"]
     assert not list(build_validator(ROOT / "schemas/2.0.0/manifest.schema.json").iter_errors(manifest))
+
+
+def test_manifest3_records_resolved_audio_stream_and_preserves_legacy_output(tmp_path, mock_probe, probe):
+    media = tmp_path / "synthetic.mov"
+    media.write_bytes(b"synthetic multi-audio stand-in")
+    legacy = pm.build_manifest("synthetic-job", [("src-1", media)], tmp_path / "legacy")
+    assert legacy["schema_version"] == "2.0.0"
+    assert "audio_stream_index" not in legacy["sources"][0]
+    probe["streams"].append({"index": 2, "codec_type": "audio", "sample_rate": "44100", "channels": 1})
+    selected = pm.build_manifest("synthetic-job", [("src-1", media)], tmp_path / "selected",
+                                 audio_stream_indices={"src-1": 2})
+    assert selected["schema_version"] == "3.0.0"
+    assert selected["sources"][0]["audio_stream_index"] == 2
+    assert selected["sources"][0]["audio_sample_rate"] == 44100
+    build_validator(ROOT / "schemas/3.0.0/manifest.schema.json", ROOT / "schemas").validate(selected)
+    assert load_json(tmp_path / "selected/manifest.json") == selected
+    with pytest.raises(ValueError, match="explicit selector"):
+        pm.build_manifest("synthetic-job", [("src-1", media)], tmp_path / "ambiguous")
+    assert not (tmp_path / "ambiguous").exists()
+
+
+@pytest.mark.parametrize("selectors", [{"other": 1}, {"src-1": True}, {"src-1": -1},
+                                       {"src-1": 2 ** 54}, [1]])
+def test_invalid_selector_mapping_fails_before_probe(tmp_path, mock_probe, selectors):
+    media = tmp_path / "synthetic.mov"
+    media.write_bytes(b"synthetic")
+    with pytest.raises(ValueError, match="selectors"):
+        pm.build_manifest("synthetic-job", [("src-1", media)], tmp_path / "bundle",
+                          audio_stream_indices=selectors)
+    assert not (tmp_path / "bundle").exists()
+    assert not mock_probe
+
+
+def test_audio_stream_cli_repeat_and_duplicate_rejection(tmp_path, mock_probe, probe):
+    media = tmp_path / "synthetic.mov"
+    media.write_bytes(b"synthetic")
+    probe["streams"].append({"index": 2, "codec_type": "audio", "sample_rate": "44100", "channels": 1})
+    assert pm.main(["--job-id", "synthetic-job", "--source", "src-1", str(media),
+                    "--audio-stream", "src-1", "2", "--output-dir", str(tmp_path / "bundle")]) == 0
+    assert load_json(tmp_path / "bundle/manifest.json")["sources"][0]["audio_stream_index"] == 2
+    assert pm.main(["--job-id", "synthetic-job", "--source", "src-1", str(media),
+                    "--audio-stream", "src-1", "2", "--audio-stream", "src-1", "1",
+                    "--output-dir", str(tmp_path / "duplicate")]) == 2
+    assert not (tmp_path / "duplicate").exists()
 
 
 @pytest.mark.parametrize("case", ["duplicate-id", "duplicate-path", "hard-link", "bad-id", "bad-job", "missing", "directory"])

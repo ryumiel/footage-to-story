@@ -138,6 +138,41 @@ def test_audio_sample_counts_are_recorded_without_claiming_synchronization():
     assert "MISSING_DECODED_AUDIO_SAMPLES" in vm.summarize_decode(probe)["issues"]
 
 
+def test_multiple_audio_streams_require_and_obey_explicit_selection(probe):
+    probe["streams"].extend([
+        {"index": 1, "codec_type": "audio", "sample_rate": "48000", "channels": 2},
+        {"index": 2, "codec_type": "audio", "sample_rate": "44100", "channels": 1},
+    ])
+    probe["frames"].extend([
+        {"stream_index": 1, "media_type": "audio", "nb_samples": 480},
+        {"stream_index": 2, "media_type": "audio", "nb_samples": 441},
+    ])
+    with pytest.raises(ValueError, match="Multiple audio"):
+        vm.summarize_decode(probe)
+    decoded = vm.summarize_decode(probe, audio_stream_index=2)
+    assert decoded["audio"]["stream_index"] == 2
+    assert decoded["audio"]["sample_rate"] == 44100
+    assert decoded["audio"]["channels"] == 1
+    assert decoded["audio"]["decoded_samples"] == 441
+    for selector in (True, -1, 0, 3):
+        with pytest.raises(ValueError):
+            vm.summarize_decode(probe, audio_stream_index=selector)
+    probe["frames"][-2]["media_type"] = "video"
+    with pytest.raises(ValueError, match="Decoded frame"):
+        vm.summarize_decode(probe, audio_stream_index=2)
+
+
+def test_selected_audio_stream_identity_is_compared(probe):
+    probe["streams"].append({"index": 2, "codec_type": "audio", "sample_rate": "48000", "channels": 2})
+    probe["frames"].append({"stream_index": 2, "media_type": "audio", "nb_samples": 480})
+    decoded = vm.summarize_decode(probe, audio_stream_index=2)
+    source = {"frame_count": 3, "fps_num": 25, "fps_den": 1, "cfr_status": "CFR",
+              "duration_ms": 120, "audio_stream_index": 1}
+    assert "AUDIO_STREAM_INDEX_MISMATCH" in vm.compare_inventory(source, decoded)
+    source["audio_stream_index"] = 2
+    assert vm.compare_inventory(source, decoded) == []
+
+
 @pytest.fixture
 def synthetic_run(tmp_path, probe, monkeypatch):
     media = tmp_path / "synthetic stand-in.mov"

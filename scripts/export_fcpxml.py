@@ -38,6 +38,8 @@ def time_value(value: Fraction) -> str:
 
 
 def geometry(probe: dict, stream_index: int) -> tuple[int, int]:
+    if sum(s.get('codec_type') == 'audio' for s in probe['streams']) > 1:
+        raise ValueError('Multiple audio tracks require an unsupported exporter stream mapping')
     if any(s.get('codec_type') not in {'video', 'audio'} or s.get('disposition', {}).get('attached_pic')
            for s in probe['streams']):
         raise ValueError('Additional tracks/cover art unsupported by exporter')

@@ -26,6 +26,21 @@ def test_complete_synthetic_bundle_passes_without_mutation(bundle):
     assert bundle == before
 
 
+def test_manifest_version_three_accepts_selected_audio_stream(bundle):
+    bundle["manifest"]["schema_version"] = "3.0.0"
+    bundle["manifest"]["sources"][0]["audio_stream_index"] = 2
+    assert check_documents(bundle) == []
+
+
+@pytest.mark.parametrize("version,selector", [
+    ("2.0.0", 2), ("3.0.0", True), ("3.0.0", -1), ("4.0.0", 2),
+])
+def test_manifest_selection_requires_registered_version_and_integer(bundle, version, selector):
+    bundle["manifest"]["schema_version"] = version
+    bundle["manifest"]["sources"][0]["audio_stream_index"] = selector
+    assert "SCHEMA_INVALID" in codes(bundle)
+
+
 def test_manifest_only_and_manual_non_ai_edit(bundle):
     assert check_documents({"manifest": bundle["manifest"]}) == []
     plan = bundle["edit-plan"]

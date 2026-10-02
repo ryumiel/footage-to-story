@@ -9,11 +9,11 @@ from pathlib import Path
 import stat
 
 try:
-    from .validate_json import SCHEMA_DIR, build_validator, load_json
+    from .validate_json import ROOT, SCHEMA_DIR, build_validator, load_json
     from .verify_approval import _read
     from .validate_json import _unique_object, _reject_constant
 except ImportError:
-    from validate_json import SCHEMA_DIR, build_validator, load_json
+    from validate_json import ROOT, SCHEMA_DIR, build_validator, load_json
     from verify_approval import _read
     from validate_json import _unique_object, _reject_constant
 
@@ -47,7 +47,14 @@ def digest(path: Path) -> str:
 
 
 def validate(value: dict, stage: str) -> None:
-    errors = list(build_validator(SCHEMA_DIR / f'{stage}.schema.json').iter_errors(value))
+    if stage in ('manifest', 'locks'):
+        version = value.get('schema_version') if isinstance(value, dict) else None
+        if version not in ('2.0.0', '3.0.0'):
+            raise ValueError(f'Unsupported {stage} schema version')
+        validator = build_validator(ROOT / 'schemas' / version / f'{stage}.schema.json', ROOT / 'schemas')
+    else:
+        validator = build_validator(SCHEMA_DIR / f'{stage}.schema.json')
+    errors = list(validator.iter_errors(value))
     if errors:
         raise ValueError(f'Invalid {stage}: {errors[0].message}')
 
@@ -86,6 +93,22 @@ def _source_hash(documents: dict, source_id: str) -> str:
     return measured
 
 
+def _source_audio_stream_index(documents: dict, source_id: str) -> int | None:
+    source = next((s for s in documents['manifest']['sources'] if s['source_id'] == source_id), None)
+    if source is None:
+        raise ValueError('Locked source missing from manifest')
+    return source.get('audio_stream_index')
+
+
+def _check_audio_selection(entry: dict, documents: dict, version: str) -> None:
+    selected = _source_audio_stream_index(documents, entry['source_id'])
+    if version == '2.0.0':
+        if selected is not None:
+            raise ValueError('Legacy lock cannot attest an explicitly selected audio stream')
+    elif entry['source_audio_stream_index'] != selected:
+        raise ValueError('Locked audio stream selection changed; explicit unlock required')
+
+
 def verify_locks(paths: dict[str, Path], record_path: Path,
                  context: TrustedLockContext) -> dict:
     if not isinstance(context, TrustedLockContext) or not context.context_reference.strip():
@@ -112,6 +135,7 @@ def verify_locks(paths: dict[str, Path], record_path: Path,
             raise ValueError('Locked decision removed or changed; explicit unlock required')
         if item[key] != entry['item_id'] or item['source_id'] != entry['source_id']:
             raise ValueError('Lock identity mismatch')
+        _check_audio_selection(entry, docs, record['schema_version'])
         if _source_hash(docs, item['source_id']) != entry['source_sha256']:
             raise ValueError('Locked source changed; conflict requires resolution')
     for stage in ('selects', 'edit-plan'):
@@ -133,6 +157,7 @@ def capture_locks(paths: dict[str, Path], events: list[LockDecision], *,
     docs = documents(paths)
     entries = {}
     previous_raw = None
+    previous_version = None
     if previous is not None:
         # Prior snapshots may be unlocked by this batch, but historical bytes must
         # still be authenticated before changing their protection.
@@ -141,6 +166,7 @@ def capture_locks(paths: dict[str, Path], events: list[LockDecision], *,
             raise ValueError('Trusted historical context required')
         old = parse(previous_raw)
         validate(old, 'locks')
+        previous_version = old['schema_version']
         if old['job_id'] != docs['manifest']['job_id']:
             raise ValueError('Historical job mismatch')
         for entry in old['locks']:
@@ -175,11 +201,22 @@ def capture_locks(paths: dict[str, Path], events: list[LockDecision], *,
         source_sha256 = _source_hash(docs, item['source_id'])
         if identity in entries and source_sha256 != entries[identity]['source_sha256']:
             raise ValueError('Unlock before replacing a changed locked source')
+        if identity in entries:
+            _check_audio_selection(entries[identity], docs, previous_version)
         entries[identity] = {'stage': event.stage, 'item_id': event.item_id,
                              'item': item, 'source_id': item['source_id'],
                              'source_sha256': source_sha256,
                              'artifact_sha256': digest(paths[event.stage])}
-    record = {'schema_version': '2.0.0', 'job_id': docs['manifest']['job_id'],
+        if docs['manifest']['schema_version'] == '3.0.0' or previous_version == '3.0.0':
+            entries[identity]['source_audio_stream_index'] = _source_audio_stream_index(docs, item['source_id'])
+    target_version = ('3.0.0' if docs['manifest']['schema_version'] == '3.0.0' or
+                      previous_version == '3.0.0' else '2.0.0')
+    if target_version == '3.0.0':
+        for entry in entries.values():
+            if 'source_audio_stream_index' not in entry:
+                _check_audio_selection(entry, docs, '2.0.0')
+                entry['source_audio_stream_index'] = None
+    record = {'schema_version': target_version, 'job_id': docs['manifest']['job_id'],
               'locks': list(entries.values()),
               'events': [vars(event) for event in events],
               'previous_sha256': context.record_sha256 if previous else None}

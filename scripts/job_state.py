@@ -25,7 +25,15 @@ class StateError(ValueError):
 
 
 def _validate(value, name):
-    errors = list(build_validator(SCHEMA_DIR / f'{name}.schema.json').iter_errors(value))
+    if name in ('manifest', 'locks'):
+        version = value.get('schema_version') if isinstance(value, dict) else None
+        if version not in ('2.0.0', '3.0.0'):
+            raise StateError(f'Unsupported {name} schema version')
+        schema = ROOT / 'schemas' / version / f'{name}.schema.json'
+        validator = build_validator(schema, ROOT / 'schemas')
+    else:
+        validator = build_validator(SCHEMA_DIR / f'{name}.schema.json')
+    errors = list(validator.iter_errors(value))
     if errors:
         raise StateError(f'{name}: {errors[0].message}')
 
@@ -205,6 +213,10 @@ def record_run(state_dir, job_id, stage, inputs, outputs, status='PASS'):
                         raise StateError(f'Input differs from recorded dependency: {upstream}')
                 dependencies.append({'stage': upstream, 'sha256': _hash(directory / index[upstream])})
         tool_paths = {p.name: p for p in SCHEMA_DIR.glob('*.schema.json')}
+        if 'manifest' in paths and manifest['schema_version'] == '3.0.0':
+            tool_paths['3.0.0-manifest.schema.json'] = ROOT / 'schemas/3.0.0/manifest.schema.json'
+        if 'locks' in paths and _metadata(paths['locks']).get('schema_version') == '3.0.0':
+            tool_paths['3.0.0-locks.schema.json'] = ROOT / 'schemas/3.0.0/locks.schema.json'
         tool_paths.update({p.name: p for p in (ROOT / 'scripts').glob('*.py')})
         record = {'schema_version': '2.0.0', 'job_id': job_id, 'run_id': uuid.uuid4().hex, 'stage': stage, 'status': status, 'recorded_at': datetime.now(timezone.utc).isoformat(), 'inputs': input_bindings, 'outputs': output_bindings, 'sources': source_bindings, 'tools': _bindings(tool_paths), 'dependencies': dependencies}
         _validate(record, 'run-record')

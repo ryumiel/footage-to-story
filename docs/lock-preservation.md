@@ -8,6 +8,13 @@ conflict, even when an item's fields remain identical. Other unlocked items may
 change. Protected fields include timing, decision, reason, audio policy, and the
 locked flag. Relinking an identical source is permitted; proxy timing is not.
 
+For a 3.0.0 manifest, capture writes a 3.0.0 lock record. Each protected item
+also snapshots its source's `audio_stream_index`, or `null` when no selection is
+declared. Verification rejects a changed selection even when the media bytes and
+item are unchanged; the caller must explicitly unlock before capturing a new
+decision. A legacy 2.0.0 lock cannot attest to a source with an explicit audio
+selection and fails closed. The released 2.0.0 lock schema remains unchanged.
+
 The trusted host supplies actual observed `LockDecision` events to
 `capture_locks(paths, events, previous=..., context=...)`. Item-specific LOCK and
 UNLOCK events include the exact observed message and conversation context. An

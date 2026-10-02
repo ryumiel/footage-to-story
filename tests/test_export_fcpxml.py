@@ -316,3 +316,12 @@ def test_conversation_approved_plan_change_blocks_publication(run, monkeypatch):
     with pytest.raises(ValueError, match='changed'):
         ex.export(run[0], None, run[2], run[3], conversation_approval=event)
     assert not (run[3] / 'timeline.fcpxml').exists()
+
+
+def test_geometry_rejects_multiple_audio_tracks():
+    from scripts.export_fcpxml import geometry
+    probe = {"streams": [{"index": 0, "codec_type": "video"},
+                         {"index": 1, "codec_type": "audio"},
+                         {"index": 2, "codec_type": "audio"}]}
+    with pytest.raises(ValueError, match="Multiple audio tracks"):
+        geometry(probe, 0)

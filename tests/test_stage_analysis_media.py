@@ -2,17 +2,19 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 import os
 import shutil
 import subprocess
 import sys
 import time
+from array import array
 
 import pytest
 
 from scripts.probe_manifest import build_manifest
-from scripts.stage_analysis_media import _check_audio_contiguity, _run, stage_media
+from scripts.stage_analysis_media import _check_audio_contiguity, _correlation, _run, stage_media
 
 
 pytestmark = pytest.mark.skipif(not shutil.which("ffmpeg") or not shutil.which("ffprobe"),
@@ -378,3 +380,81 @@ def test_audiovisual_orientation_fit_and_padding(tmp_path, size, content, output
     assert clip["video_frame_count"] == 20
     assert clip["video_decoded_frames_match"] is True
     assert clip["decoded_samples"] == 38400
+
+
+def _dual_audio_10bit_pair(tmp_path, *, bt709=True):
+    movie = tmp_path / "dual.mov"
+    command = ["ffmpeg", "-nostdin", "-v", "error", "-f", "lavfi", "-i",
+               "testsrc2=size=192x128:rate=24:duration=2", "-f", "lavfi", "-i",
+               "sine=frequency=440:sample_rate=48000:duration=2", "-f", "lavfi", "-i",
+               "sine=frequency=880:sample_rate=48000:duration=2", "-map", "0:v:0",
+               "-map", "1:a:0", "-map", "2:a:0", "-c:v", "libx264",
+               "-pix_fmt", "yuv420p10le"]
+    if bt709:
+        command += ["-x264-params", "colorprim=bt709:transfer=bt709:colormatrix=bt709"]
+    command += ["-c:a", "aac", str(movie)]
+    subprocess.run(command, check=True, capture_output=True, timeout=30)
+    manifest = {"schema_version": "3.0.0", "job_id": "synthetic-job", "sources": [{
+        "source_id": "src-1", "path": str(movie), "duration_ms": 2000,
+        "fps_num": 24, "fps_den": 1, "frame_count": 48, "cfr_status": "UNKNOWN",
+        "audio_sample_rate": 48000, "audio_channels": 1,
+        "content_sha256": hashlib.sha256(movie.read_bytes()).hexdigest(),
+        "audio_stream_index": 2}]}
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest))
+    request = {"schema_version": "2.0.0", "job_id": "synthetic-job", "request_id": "req-1",
+               "runner": "antigravity", "provider": "gemini", "cloud_upload_allowed": False,
+               "authorization_ref": None,
+               "sources": [{"source_id": "src-1", "ranges": [{"start_ms": 250, "end_ms": 750}]}],
+               "questions": ["Describe visible movement and speech."],
+               "requested_categories": ["visual", "speech"]}
+    request_path = tmp_path / "request.json"
+    request_path.write_text(json.dumps(request))
+    return movie, manifest_path, request_path
+
+
+def test_selected_second_audio_and_10bit_bt709_conversion(tmp_path):
+    movie, manifest, request = _dual_audio_10bit_pair(tmp_path)
+    output = tmp_path / "staged-av"
+    clip = stage_media(manifest, request, output, mode="audiovisual")["clips"][0]
+    assert clip["source_audio_stream_index"] == 2
+    assert clip["source_video_pix_fmt"] == "yuv420p10le"
+    assert clip["video_conversion"] == "bt709_10bit_to_yuv420p8"
+    assert (clip["source_start_frame"], clip["source_end_frame"], clip["video_frame_count"]) == (6, 18, 12)
+    assert clip["decoded_samples"] == 24000
+    assert clip["waveform_correlation"] > .98
+    def decode(command):
+        raw = subprocess.check_output(command + ["-f", "f32le", "-acodec", "pcm_f32le", "-"], timeout=30)
+        values = array("f")
+        values.frombytes(raw)
+        return values
+    first = decode(["ffmpeg", "-nostdin", "-v", "error", "-i", str(movie),
+                    "-filter_complex", "[0:1]atrim=start_sample=12000:end_sample=36000,asetpts=PTS-STARTPTS[a]",
+                    "-map", "[a]", "-vn"])
+    staged = decode(["ffmpeg", "-nostdin", "-v", "error", "-i", str(output / clip["media_path"]),
+                     "-map", "0:a:0", "-vn"])
+    assert len(first) == len(staged) == 24000
+    assert abs(_correlation(first, staged)) < .2
+
+
+@pytest.mark.parametrize("selector", [None, 0, 3])
+def test_dual_audio_requires_valid_explicit_selector(tmp_path, selector):
+    _, manifest_path, request = _dual_audio_10bit_pair(tmp_path)
+    manifest = json.loads(manifest_path.read_text())
+    if selector is None:
+        del manifest["sources"][0]["audio_stream_index"]
+    else:
+        manifest["sources"][0]["audio_stream_index"] = selector
+    manifest_path.write_text(json.dumps(manifest))
+    output = tmp_path / "staged-av"
+    with pytest.raises(ValueError):
+        stage_media(manifest_path, request, output, mode="audiovisual")
+    assert not output.exists()
+
+
+def test_10bit_without_known_bt709_tags_is_rejected(tmp_path):
+    _, manifest, request = _dual_audio_10bit_pair(tmp_path, bt709=False)
+    output = tmp_path / "staged-av"
+    with pytest.raises(ValueError, match="explicit BT.709"):
+        stage_media(manifest, request, output, mode="audiovisual")
+    assert not output.exists()

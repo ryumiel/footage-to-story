@@ -41,7 +41,15 @@ from uploaded clips; provenance stays in local records. An exclusive cooperative
 staging. This is analysis-extraction verification, not exact lossy-audio identity
 or proof of quotation correctness.
 
-Audiovisual staging retains all selected source frames and rational FPS. It bounds
+Audiovisual staging retains all selected source frames and rational FPS. A 3.0.0
+manifest binds an explicit absolute audio-stream index for multi-track sources;
+extraction and sample verification use that selected stream. Legacy 2.0.0 manifests
+continue to require unambiguous audio. Staging accepts 8-bit yuv420p and 10-bit
+yuv420p10le; the latter requires explicit BT.709 color tags and is converted to
+8-bit yuv420p in the analysis copy. Original bit depth and selected audio index
+are recorded locally. This conversion is not a color-managed final master.
+
+Audiovisual staging bounds
 content to 640×360 for landscape, 360×640 for portrait, or 360×360 for square
 footage, without upscaling. Aspect ratio is preserved subject to even-pixel rounding
 for yuv420p. Black padding rounds both output dimensions upward to multiples of 16;

@@ -1,7 +1,10 @@
-# Schema Catalog - Contract 2.0.0
+# Schema Catalog
 
-All schemas live in `schemas/2.0.0/`. All stage documents require
-`schema_version: "2.0.0"` and a nonblank token `job_id`. No instance-level `$schema`
+The original stage contracts live in `schemas/2.0.0/` and require
+`schema_version: "2.0.0"`. Explicit audio-selection manifests and corresponding
+lock snapshots use independent 3.0.0 schemas in `schemas/3.0.0/`; a lock snapshot
+binds each selected source audio stream. All documents require a nonblank token
+`job_id`. No instance-level `$schema`
 or unknown convenience fields are accepted. Select the schema explicitly at the
 validation call; do not let untrusted data choose a remote schema.
 
