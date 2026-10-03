@@ -147,3 +147,22 @@ def test_response_schema_path_cannot_escape_allowlist(tmp_path):
     media.write_bytes(b'SYNTHETIC')
     with pytest.raises(ValueError, match='schema'):
         write_guard(tmp_path, media, response_schema='../../outside.schema.json')
+
+
+def test_visual_guard_rejects_audio_claims_and_dialogue(tmp_path):
+    media = tmp_path / 'sample.mp4'
+    media.write_bytes(b'SYNTHETIC visual permission boundary')
+    guard = write_guard(tmp_path, media, response_schema='agy-visual-response.schema.json')
+    policy = json.loads(Path(guard['policy_path']).read_text())
+    segment = {'segment_id':'clip-0001-v1','start_ms':0,'end_ms':1000,
+               'observation_type':'visual','summary':'Synthetic red card',
+               'visible_content':'A red card','audible_content':None,
+               'confidence':0.9,'evidence':['Synthetic visible red card']}
+    response = {'video_available':True,'segments':[segment],'warnings':[]}
+    def finish(payload):
+        return evaluate(policy, {'toolCall': {'name':'finish','args':payload}})['decision']
+    assert finish(response) == 'allow'
+    assert finish(dict(response, audio_available=True)) == 'deny'
+    assert finish(dict(response, segments=[dict(segment, observation_type='dialogue', audible_content='speech')])) == 'deny'
+    policy['response_schema_sha256'] = '0' * 64
+    assert finish(response) == 'deny'

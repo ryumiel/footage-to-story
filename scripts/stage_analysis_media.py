@@ -158,7 +158,7 @@ def _run(command: list[str], *, timeout: float, max_bytes: int, output: Path,
 def _probe_source(path: Path, ffprobe: str, timeout: float, temporary: Path,
                   audio_stream_index: int | None = None) -> tuple[dict, dict, int, dict]:
     out = temporary / "scan.json"
-    _run([ffprobe, "-v", "error", "-protocol_whitelist", "file", "-enable_drefs", "0",
+    _run([ffprobe, "-threads", "4", "-v", "error", "-protocol_whitelist", "file", "-enable_drefs", "0",
           "-show_frames", "-show_streams", "-show_format", "-show_entries",
           "frame=stream_index,media_type,pts,duration,nb_samples,sample_fmt,channels,side_data_list,width,height,interlaced_frame:stream=index,codec_type,time_base,start_time,sample_rate,channels,avg_frame_rate,width,height,pix_fmt,color_space,color_primaries,color_transfer,disposition:format=format_name",
           "-of", "json", str(path)], timeout=timeout, max_bytes=64 * 1024 * 1024, output=out)
@@ -282,12 +282,16 @@ def _correlation(left: array, right: array) -> float:
 def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                 ffmpeg: str = "ffmpeg", ffprobe: str = "ffprobe", timeout: float = 60,
                 max_total_seconds: int = 60, max_clip_bytes: int = 20 * 1024 * 1024,
-                mode: str = "speech") -> dict:
+                source_scan_timeout: float | None = None, mode: str = "speech") -> dict:
     """Publish immutable speech or audiovisual clips with exact local provenance."""
     if (not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or not math.isfinite(timeout) or timeout <= 0
         or not isinstance(max_total_seconds, int) or isinstance(max_total_seconds, bool) or max_total_seconds <= 0
         or not isinstance(max_clip_bytes, int) or isinstance(max_clip_bytes, bool) or max_clip_bytes <= 0):
         raise ValueError("Invalid timeout or staging limits")
+    if source_scan_timeout is not None and (isinstance(source_scan_timeout, bool)
+            or not isinstance(source_scan_timeout, (int, float))
+            or not math.isfinite(source_scan_timeout) or source_scan_timeout <= 0):
+        raise ValueError("Invalid source scan timeout")
     output_dir = check_output_directory(output_dir)
     manifest_path = manifest_path.absolute()
     request_path = request_path.absolute()
@@ -315,6 +319,9 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
     if mode == "speech":
         if not categories or not categories <= speech_categories:
             raise ValueError("Speech staging requires speech/dialogue categories only")
+    elif mode == "visual":
+        if categories != {"visual"} or len(request["requested_categories"]) != 1:
+            raise ValueError("Visual staging requires exactly the visual category")
     elif mode == "audiovisual":
         if (len(request["requested_categories"]) != 2 or "visual" not in categories
             or len(categories & speech_categories) != 1):
@@ -362,7 +369,7 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
             scan_dir = temporary / f"scan-{source_id}"
             scan_dir.mkdir()
             decoded, video, rate, video_stream = _probe_source(
-                path, executable["ffprobe"], timeout, scan_dir,
+                path, executable["ffprobe"], source_scan_timeout if source_scan_timeout is not None else timeout, scan_dir,
                 audio_stream_index=sources[source_id].get("audio_stream_index"))
             issues = compare_inventory(sources[source_id], decoded)
             if issues:
@@ -384,7 +391,7 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
             count = last - first
             if count * channels * 4 > 256 * 1024 * 1024:
                 raise ValueError("Decoded verification interval is too large")
-            if mode == "audiovisual":
+            if mode in {"audiovisual", "visual"}:
                 width, height = video_stream.get("width"), video_stream.get("height")
                 source_pix_fmt = video_stream.get("pix_fmt")
                 if (source_pix_fmt not in {"yuv420p", "yuv420p10le"} or isinstance(width, bool) or isinstance(height, bool)
@@ -399,18 +406,18 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                  padding, transform) = _video_layout(width, height)
                 video_filter = (f"trim=start_frame={int(start_frame)}:end_frame={int(end_frame)},"
                                 f"setpts=PTS-STARTPTS,{transform}")
-            name = f"clip-{number:04d}.{'mp4' if mode == 'audiovisual' else 'mp3'}"
+            name = f"clip-{number:04d}.{'mp4' if mode != 'speech' else 'mp3'}"
             clip_path = temporary / name
             audio_filtergraph = f"[0:{audio_index}]atrim=start_sample={first}:end_sample={last},asetpts=PTS-STARTPTS[a]"
             filtergraph = audio_filtergraph
-            if mode == "audiovisual":
+            if mode in {"audiovisual", "visual"}:
                 filtergraph = f"[0:v:0]{video_filter}[v];" + filtergraph
             encode = [executable["ffmpeg"], "-nostdin", "-v", "error", "-protocol_whitelist", "file", "-i", str(path),
                       "-filter_complex", filtergraph]
-            if mode == "audiovisual":
+            if mode in {"audiovisual", "visual"}:
                 encode += ["-map", "[v]", "-map", "[a]", "-map_metadata", "-1",
                            "-map_metadata:s:v", "-1", "-map_metadata:s:a", "-1", "-map_chapters", "-1",
-                           "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+                           "-c:v", "libx264", "-preset", "medium", "-crf", "18",
                            "-pix_fmt", "yuv420p", "-fps_mode:v", "passthrough"]
                 if source_pix_fmt == "yuv420p10le":
                     encode += ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
@@ -424,7 +431,7 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                  bounded_file=clip_path, bounded_file_bytes=max_clip_bytes)
             if not clip_path.is_file() or clip_path.stat().st_size == 0 or clip_path.stat().st_size > max_clip_bytes:
                 raise ValueError("Encoded clip is absent or exceeds byte limit")
-            if mode == "audiovisual":
+            if mode in {"audiovisual", "visual"}:
                 clip_scan = temporary / f"clip-scan-{number:04d}"
                 clip_scan.mkdir()
                 staged_decoded, staged_video, staged_rate, staged_stream = _probe_source(
@@ -461,7 +468,7 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                           "decoded_samples": count, "sample_rate": rate, "channels": channels,
                           "source_audio_stream_index": audio_index,
                           "waveform_correlation": correlation, "encode_command": encode}
-            if mode == "audiovisual":
+            if mode in {"audiovisual", "visual"}:
                 clip_record.update({"media_kind": "audiovisual", "media_path": name,
                                     "media_sha256": clip_record["audio_sha256"],
                                     "media_size_bytes": clip_record["audio_size_bytes"],
@@ -475,7 +482,7 @@ def stage_media(manifest_path: Path, request_path: Path, output_dir: Path, *,
                                     "video_frame_count": int(end_frame - start_frame),
                                     "video_fps_num": fps.numerator, "video_fps_den": fps.denominator,
                                     "video_transform": transform,
-                                    "video_encoding": {"codec": "libx264", "preset": "medium", "crf": 23},
+                                    "video_encoding": {"codec": "libx264", "preset": "medium", "crf": 18},
                                     "video_correspondence": video_correspondence,
                                     "audio_decoded_samples_match": True})
             clips.append(clip_record)
@@ -513,12 +520,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout", type=float, default=60)
     parser.add_argument("--max-total-seconds", type=int, default=60)
     parser.add_argument("--max-clip-bytes", type=int, default=20 * 1024 * 1024)
-    parser.add_argument("--mode", choices=("speech", "audiovisual"), default="speech")
+    parser.add_argument("--source-scan-timeout", type=float)
+    parser.add_argument("--mode", choices=("speech", "audiovisual", "visual"), default="speech")
     args = parser.parse_args(argv)
     try:
         report = stage_media(args.manifest, args.request, args.output_dir, timeout=args.timeout,
                              max_total_seconds=args.max_total_seconds, max_clip_bytes=args.max_clip_bytes,
-                             mode=args.mode)
+                             mode=args.mode, source_scan_timeout=args.source_scan_timeout)
     except (OSError, ValueError) as exc:
         print(f"STAGING_ERROR: {exc}", file=sys.stderr)
         return 2

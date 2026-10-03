@@ -107,3 +107,12 @@ and tested implementation. Reject them rather than dropping them silently.
 An AI review that is otherwise satisfied but lacks authentic human approval remains
 BLOCKED with an explicit issue. A human approval may retain acknowledged warnings,
 but not ERROR issues or required changes. Changing plan bytes invalidates the hash.
+
+## Exploratory analysis cache auxiliary contract
+
+`schemas/2.0.0/analysis-cache.schema.json` is a closed Draft 2020-12 auxiliary
+record for reusable resized analysis media. It binds manifest/source/copy bytes,
+selected audio, original file signature and reported timing/dimensions. Its
+constant `ANALYSIS_METADATA_ONLY` level and `NOT_RUN` correspondence fields
+prevent describing metadata acceptance as decoded-source proof. It is not a new
+canonical editorial stage, upload permission or final source/proxy mapping.

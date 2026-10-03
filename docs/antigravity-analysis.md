@@ -1,6 +1,6 @@
 # Bounded Antigravity visual and speech analysis
 
-The M3 adapter supports speech and combined visual/dialogue observations through
+The M3 adapter supports separate visual, speech, and combined visual/dialogue observations through
 Antigravity CLI `agy` with an
 explicit Gemini model. It returns canonical analysis, not selects, a story,
 a timeline, approved quotations, or final frame cuts. General sound descriptions
@@ -56,12 +56,12 @@ for yuv420p. Black padding rounds both output dimensions upward to multiples of 
 chroma-aligned offsets center the content within two pixels. Standard 16:9 content
 is 640×360 inside a 640×368 output, with four pixels above and below. The local
 mapping records content dimensions and each padding edge. It encodes transformed
-frames as lossy H.264 at CRF23 with the medium preset and keeps compressed MP3
+frames as lossy H.264 at CRF18 with the medium preset and keeps compressed MP3
 speech in the same MP4. Fresh zero-origin CFR checks preserve exact frame count
 and rational FPS. Compression-tolerant per-frame checks compare the staged video
 with the same source transform; the mapping records their method, thresholds,
-and observed metrics. Per-frame SSIM minima are 0.90 for luma/combined and 0.80
-for each chroma plane; mean combined SSIM must reach 0.95. Comparisons stop at the
+and observed metrics. Per-frame SSIM minima are 0.95 for luma/combined and 0.90
+for each chroma plane; mean combined SSIM must reach 0.97. Comparisons stop at the
 shorter input without repeating its last frame, and must cover the requested
 frame count. Similar-looking substitutions can still pass these similarity
 thresholds. These establish bounded visual correspondence, not pixel
@@ -99,6 +99,14 @@ declared transport annotations are bounded separately; every remaining argument
 must satisfy the strict provider schema. Successful completion is linked to its
 tool event by the provider's step index. Other unknown fields are rejected.
 
+Streamed tool parameters are display previews: `agy` can replace portions of long
+strings with an ellipsis. The adapter checks the read/completion event sequence
+and binds the guard's full-input hash directly to the final structured output.
+It never expands an ellipsis or imports preview text. A changed final output,
+missing audit, extra tool invocation, or invalid response still fails. Available
+final usage is recorded before output acceptance, including failed process exits;
+missing or inconsistent final usage remains unknown.
+
 A zero-token `/hooks` metadata preflight must show the exact enabled guard as the
 sole enabled hook, avoiding undocumented precedence with other hook configurations.
 Guard, config, selected response schema, clip, request, manifest, and source hashes are rechecked. A completed
@@ -117,6 +125,16 @@ retained. Unknown final usage, timeouts, invalid contracts, or failed guards can
 be retried as a successful empty analysis. POSIX process groups are terminated on
 limits. Live token usage stops the process at a configured observed threshold;
 aggregate usage is checked before further dispatch.
+
+Unknown final usage stops the affected attempt without retry and stops batch
+dispatch by default. An explicitly authorized exploratory caller may instead
+record the failed attempt as a gap and continue other untouched requests when
+the user chooses to rely on a calling-side subscription cap. The caller must
+retain unknown final usage and observed lower bounds; the aggregate final token
+total remains unknown. Observed thresholds, call budgets, consent bindings,
+tool confinement, and output rejection still apply. A user's subscription-cap
+statement records their selected constraint; this adapter does not verify the
+subscription's billing terms or implement that cap.
 
 The CLI does not expose a documented hard monetary or pre-inference token cap.
 Observed token limits can be reached after a model invocation has already accrued
@@ -196,3 +214,82 @@ bounded longer staging timeout for slow original decoding, such as 300 seconds
 per local subprocess for the Ceretto smoke test. Default staging timeout is 60
 seconds. The encoded clip and media guard share the unchanged 20 MiB limit;
 lossy encoding reduces size but does not guarantee that every clip fits.
+
+## Separate visual and speech passes
+
+The explicit `mode="visual"` accepts exactly the `visual` request category and
+uses the strict auxiliary `agy-visual-response.schema.json`. It returns only
+visual observations; audio-availability fields and dialogue entries fail.
+`mode="speech"` remains a separate MP3 dialogue pass. Canonical request and
+analysis schemas are unchanged. Combined `mode="audiovisual"` still requires
+both modalities to be accessible and does not silently degrade to visual-only.
+
+Visual staging uses the same synchronized MP4, including compressed primary
+audio for extraction verification. Upload permission must therefore cover that
+MP4's actual bytes, even though the provider is asked for visuals only. Each pass
+needs its own exact request/manifest consent binding, call budget, guarded media
+read and immutable provenance. Two passes on one source range are two calls and
+two attached-duration charges to dispatch budgets; shared time windows do not
+establish speaker identity or verified dialogue boundaries.
+
+### Long-source scan controls
+
+Local source scanning uses four decoder threads and the existing full decoded
+frame/audio clock checks. `stage_media(..., source_scan_timeout=3600)` and CLI
+`--source-scan-timeout 3600` can explicitly bound a longer source decode without
+extending other staging subprocess deadlines. The provider runner forwards this
+optional limit independently of `staging_timeout` and provider `timeout`; absent
+it, source scanning uses the staging timeout as before. Invalid, non-finite or
+non-positive limits fail. The existing 64 MiB scan-output and 20 MiB clip ceilings
+remain unchanged. A longer deadline is not a long-source acceptance result.
+
+In the strict path, whole-source scans and trim-based staging can still repeat
+decoding across requests. Efficient reuse of decoded-source proof remains
+unimplemented. The metadata-only fast path below avoids those scans for
+exploratory analysis; no saved scan or resume record authorizes an upload.
+
+## Fast exploratory analysis copies
+
+An explicitly selected fast path prepares one reusable resized MP4 per recording
+and checks reported metadata rather than decoding every original frame. Use
+`python -m scripts.analysis_cache --manifest work/JOB/manifest.json --source-id ID
+--cache-root work/JOB/analysis-cache --decoder videotoolbox` on a compatible macOS
+FFmpeg installation, or omit the decoder option for software decoding. Hardware
+support must work in the actual conversion; tool failures are preserved rather
+than accepted. Preparation is local and does not upload anything.
+
+`run_analysis(..., analysis_cache_dir=Path('work/JOB/analysis-cache'),
+analysis_decoder='videotoolbox', preparation_timeout=3600)` explicitly selects
+this path. The existing strict `stage_media` path remains the default for API
+compatibility. For local clips, call `scripts.analysis_cache.stage_cached`.
+Copies retain 360p content in padded dimensions, selected audio only, H.264 CRF18
+and compressed AAC audio. Sources and stage contracts are unchanged.
+
+The closed auxiliary `analysis-cache.schema.json` records exact source/manifest
+and copy byte bindings, source file signatures and selected audio stream.
+Preparation checks original bytes once. Reuse checks the original file signature
+and cached-copy bytes; changes fail rather than silently reusing stale media. New source/manifest bytes select a different cache key.
+Clip preparation uses timestamp seeking in the small copy, not repeated full
+original decodes. It checks reported zero origins, FPS, durations within 100 ms,
+audio rate/channels, dimensions, successful conversion and the 20 MiB clip ceiling.
+Original reported FPS must agree with the manifest and r_frame_rate; explicitly
+known VFR sources are rejected. Matching reported rates do not establish decoded
+CFR. Source header duration/audio must match the manifest.
+
+Results are labeled `ANALYSIS_METADATA_ONLY`; exact frame/audio correspondence
+remains `NOT_RUN` and final export mapping remains `NOT_IMPLEMENTED`. No SSIM,
+waveform-correlation or full-source frame scan runs in this path. Candidate
+millisecond offsets refer to the nominal original clock, but are approximate;
+resizing, timestamp repair, encoding and seeking may lose details or introduce
+small shifts. AAC followed by MP3 for speech is another lossy generation.
+This is an analysis copy, not a verified general proxy or final-edit source.
+Use the originals and existing fresh edit/export gates for exact approved cuts.
+
+Upload consent, exact request binding, provider native-read/finish confinement,
+modalities, clip/call/time/observed-token limits and provenance remain required.
+During a fast batch, source signatures are checked between attempts and before
+publication; unchanged originals are not repeatedly hashed. Cached-copy and
+uploaded-clip byte hashes remain checked. This relies on local file identity,
+size, mtime and ctime for routine original freshness, not a new decoded proof.
+The cache cannot authorize uploads or establish quotation accuracy. There is
+no general nonzero-origin/proxy export mapping implemented by this feature.

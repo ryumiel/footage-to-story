@@ -42,7 +42,13 @@ Never infer speaker identity from temporal overlap.
 One schema-validated output-only `finish` is permitted after that read; its payload
 hash must match final output. Other tools and source metadata/chapter transmission are excluded. Preserve every
 attempt, including failures, and respect call/duration/observed-usage budgets.
-Unknown final usage stops execution without retry. These are dispatch controls,
+Unknown final usage stops the affected attempt without retry. By default it also
+stops batch dispatch. When the user explicitly chooses exploratory continuation
+under a calling-side subscription cap, the trusted caller may skip that failed
+attempt and dispatch other untouched, authorized requests. Preserve unknown usage
+as unknown, retain observed usage lower bounds, and do not claim a known aggregate
+token or monetary total. This does not relax consent, tool confinement, response
+validation, per-call limits, or final export gates. These are dispatch controls,
 not a hard provider billing cap. Do not enable general sound descriptions after
 the failed non-speech audio controls.
 
@@ -72,3 +78,32 @@ Return `analysis.json` for the same `request_id` and `job_id`, with
 Never produce final selects, a story plan, an edit plan, FCPXML, authentic human
 approval, or unrequested uploads. Format repairs may not add invented evidence.
 No schema-valid result should be described as frame-accurate or export-ready.
+
+## Explicit separate visual pass
+
+Use `mode="visual"` with exactly the `visual` request category for visible content
+only. The strict auxiliary visual response contract rejects dialogue and
+audio-availability claims; combined mode still requires both modalities.
+Visual staging retains a synchronized MP4 with compressed primary audio, so
+explicit upload consent must cover the actual MP4 bytes even though the provider
+is asked for visuals only. A speech pass uses its own exact request, MP3, consent
+binding, call budget and provenance. Do not infer speaker identity or verified
+boundaries when comparing the passes.
+
+An explicit positive source-scan timeout can permit a longer full source decode
+without extending provider or other staging deadlines. All source clocks, exact
+frame/sample checks, 64 MiB scan-output and 20 MiB clip limits still apply.
+A longer deadline or a RUNNING record is not source acceptance.
+
+## User-selected fast exploratory analysis
+
+When the user chooses lightweight exploratory checks, pass `analysis_cache_dir`
+to `run_analysis`; select an actual supported `analysis_decoder` and explicit
+preparation deadline. This uses reusable 360p copies and metadata/byte checks,
+not the full decoded checks described for strict staging above. Read the fast
+path in `docs/antigravity-analysis.md`. Consent, provider confinement and budgets
+still apply. Record `ANALYSIS_METADATA_ONLY`, exact frame/audio correspondence
+`NOT_RUN`, and final export mapping `NOT_IMPLEMENTED`. Treat source-relative
+candidate milliseconds as approximate. Never promote cache metadata to exact
+source proof or final-edit approval. Strict staging remains available; final
+edit/export verification uses originals and its existing gates.

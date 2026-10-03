@@ -27,8 +27,9 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Historical human lock preservation through a trusted caller, with fresh export checks.
 - Immutable local job records and dependency inspection/resume without automatic editorial execution.
 - Rational subtitle sidecar mapping with fresh video checks, including compressed source audio.
-- Bounded speech or combined visual/dialogue analysis through Antigravity `agy`, with verified local clip staging,
+- Bounded separate visual, speech, or combined visual/dialogue analysis through Antigravity `agy`, with verified local clip staging,
   exact-request upload consent, native tool confinement, limits, and raw provenance.
+- Optional reusable resized analysis copies with lightweight metadata/byte checks; exact correspondence remains NOT_RUN.
 - Synthetic positive fixtures, negative tests, and explicit validation-boundary tests.
 - English instructions, migration guidance, architecture, and a design review.
 

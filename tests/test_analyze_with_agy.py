@@ -59,7 +59,7 @@ def av_setup(setup, monkeypatch):
             'request_sha256': digest(request.read_bytes()),
             'authorization_ref': doc['authorization_ref']}
     def staged(manifest_path, request_path, output_dir, **kwargs):
-        assert kwargs['mode'] == 'audiovisual'
+        assert kwargs['mode'] in ('audiovisual', 'visual')
         output_dir.mkdir()
         media = output_dir / 'clip-0001.mp4'
         media.write_bytes(b'synthetic audiovisual MP4 bytes')
@@ -151,7 +151,13 @@ if media.suffix == '.mp4':
         (cwd / '.agents' / 'audit.ndjson').write_text(''.join(json.dumps(row) + '\\n' for row in audits))
         read_active['step_update']['tool_info']['parameters']['AbsolutePath'] = str(wrong)
         read_done['step_update']['tool_info']['parameters']['AbsolutePath'] = str(wrong)
+if mode.startswith('visual-'):
+    del response['audio_available']
+    response['segments'] = [response['segments'][1 if mode == 'visual-dialogue' else 0]]
+    if mode == 'visual-unavailable': response['video_available'] = False
+    if mode == 'visual-audio-field': response['audio_available'] = True
 if mode == 'unknown': response['segments'][0]['invented'] = 'no'
+if mode == 'zero-length': response['segments'][0]['end_ms'] = response['segments'][0]['start_ms']
 if mode == 'bounds': response['segments'][0]['end_ms'] = 1001
 if mode == 'unavailable': response['audio_available'] = False
 finish_hash = hashlib.sha256(json.dumps(response, sort_keys=True, separators=(',', ':'),
@@ -174,6 +180,18 @@ if mode in ('unknown', 'deny', 'finish-denied', 'av-mixed', 'av-unknown', 'av-wr
                    'state':'ERROR','tool_name':'finish'}}
 result = {'event':'result','result':{'status':'SUCCESS','structured_output':response,
           'usage':{'input_tokens':40,'output_tokens':10,'thinking_tokens':5,'total_tokens':50}}}
+if mode == 'abbreviated-preview':
+    preview = json.loads(json.dumps(response))
+    preview['segments'][0]['audible_content'] = 'Synth…'
+    finish_active['step_update']['tool_info']['parameters'] = preview
+if mode == 'preview-hash-only':
+    preview = json.loads(json.dumps(response))
+    preview['segments'][0]['audible_content'] = 'Synth…'
+    finish_active['step_update']['tool_info']['parameters'] = preview
+    rows = [json.loads(line) for line in (cwd / '.agents' / 'audit.ndjson').read_text().splitlines()]
+    rows[-1]['output_sha256'] = hashlib.sha256(json.dumps(preview, sort_keys=True,
+        separators=(',', ':'), ensure_ascii=False).encode()).hexdigest()
+    (cwd / '.agents' / 'audit.ndjson').write_text(''.join(json.dumps(row) + '\\n' for row in rows))
 if mode == 'finish-final-mismatch':
     result['result']['structured_output'] = json.loads(json.dumps(response))
     result['result']['structured_output']['segments'][0]['summary'] = 'Different final words'
@@ -193,6 +211,7 @@ if mode != 'missing-finish':
     print(json.dumps(finish_active), flush=True)
     if mode != 'finish-missing-done': print(json.dumps(finish_done), flush=True)
 print(json.dumps(result), flush=True)
+if mode == 'exit-error-known-usage': sys.exit(1)
 ''')
     script.chmod(0o700)
     return str(script)
@@ -226,6 +245,34 @@ def test_success_preserves_provider_and_imports_candidate_offsets(setup, tmp_pat
     assert (output / 'imported' / 'raw-input.bin').read_bytes() == (output / 'analysis.json').read_bytes()
 
 
+def test_abbreviated_preview_imports_only_guard_bound_full_output(setup, tmp_path):
+    report = call(setup, tmp_path, mode='abbreviated-preview')
+    assert report['status'] == 'PASS'
+    analysis = json.loads((tmp_path / 'run' / 'analysis.json').read_text())
+    assert analysis['segments'][0]['audible_content'] == 'Synthetic speech'
+    assert 'Synth…' not in (tmp_path / 'run' / 'analysis.json').read_text()
+
+
+def test_cached_analysis_keeps_guard_consent_and_unverified_mapping_labels(setup, tmp_path, monkeypatch):
+    from scripts import analysis_cache
+    original = runner.stage_media
+    def cached(*args, **kwargs):
+        assert kwargs['cache_root'] == tmp_path / 'cache'
+        assert kwargs['decoder'] == 'software'
+        staged = original(*args, **kwargs)
+        from scripts.probe_manifest import file_signature
+        for clip in staged['clips']:
+            clip['source_signature'] = list(file_signature(Path(clip['source_path'])))
+        return staged
+    monkeypatch.setattr(analysis_cache, 'stage_cached', cached)
+    report = call(setup, tmp_path, analysis_cache_dir=tmp_path / 'cache')
+    assert report['status'] == 'PASS' and report['calls'] == 1
+    assert report['validation_level'] == 'ANALYSIS_METADATA_ONLY'
+    assert report['exact_frame_correspondence'] == 'NOT_RUN'
+    assert report['exact_audio_correspondence'] == 'NOT_RUN'
+    assert report['final_export_mapping'] == 'NOT_IMPLEMENTED'
+
+
 def test_staging_timeout_is_forwarded_independently_of_provider_timeout(setup, tmp_path, monkeypatch):
     original = runner.stage_media
     observed = []
@@ -236,7 +283,8 @@ def test_staging_timeout_is_forwarded_independently_of_provider_timeout(setup, t
     report = call(setup, tmp_path, staging_timeout=300, timeout=90)
     assert report['status'] == 'PASS'
     assert observed == [{'max_total_seconds': 60, 'timeout': 300}]
-    assert report['limits'] == {'staging_timeout_seconds': 300, 'provider_timeout_seconds': 90}
+    assert report['limits'] == {'staging_timeout_seconds': 300, 'provider_timeout_seconds': 90,
+                                'source_scan_timeout_seconds': 300}
 
 
 def test_av_import_preserves_separate_overlapping_modalities(av_setup, tmp_path):
@@ -290,12 +338,12 @@ def test_av_requires_exact_visual_and_one_speech_category(av_setup, tmp_path, ca
     assert not (tmp_path / 'run').exists()
 
 
-@pytest.mark.parametrize('mode', ['unknown', 'bounds', 'unavailable', 'unknown-usage', 'deny',
+@pytest.mark.parametrize('mode', ['unknown', 'bounds', 'zero-length', 'unavailable', 'unknown-usage', 'deny',
                                   'provider-error', 'timeout', 'overflow', 'token-stream',
                                   'underreported-final', 'finish-denied', 'missing-finish',
                                   'finish-hash-mismatch', 'finish-final-mismatch',
                                   'finish-foreign-index', 'finish-missing-done',
-                                  'read-foreign-index'])
+                                  'read-foreign-index', 'preview-hash-only'])
 def test_bad_provider_attempt_keeps_evidence_and_never_imports(setup, tmp_path, mode):
     with pytest.raises(Exception):
         call(setup, tmp_path, mode=mode, timeout=1, max_output_bytes=4096)
@@ -306,6 +354,16 @@ def test_bad_provider_attempt_keeps_evidence_and_never_imports(setup, tmp_path, 
     assert (output / 'clip-01-attempt-01' / 'response.ndjson').exists()
     assert (output / 'clip-01-attempt-01' / '.agents' / 'hooks.json').exists()
     assert (output / 'clip-01-attempt-01' / 'hooks-inspection.json').exists()
+
+
+@pytest.mark.parametrize('mode', ['finish-hash-mismatch', 'exit-error-known-usage'])
+def test_rejected_response_preserves_known_final_usage(setup, tmp_path, mode):
+    with pytest.raises(ValueError):
+        call(setup, tmp_path, mode=mode)
+    report = json.loads((tmp_path / 'run' / 'run-report.json').read_text())
+    assert report['usage_tokens'] == 50
+    assert report['attempts'][0]['usage_accounting'] == 'FINAL_USAGE_KNOWN'
+    assert not (tmp_path / 'run' / 'imported').exists()
 
 
 def test_missing_loaded_hook_blocks_before_provider_dispatch(setup, tmp_path):
@@ -399,3 +457,38 @@ def test_budgets_fail_closed(setup, tmp_path, limits):
     with pytest.raises(ValueError):
         call(setup, tmp_path, **limits)
     assert not (tmp_path / 'run' / 'imported').exists()
+
+
+@pytest.mark.parametrize('fake_mode', ['visual-success', 'visual-unavailable', 'visual-dialogue', 'visual-audio-field'])
+def test_visual_mode_imports_only_accessible_visual_observations(av_setup, tmp_path, fake_mode):
+    manifest, request, _, auth = av_setup
+    document = json.loads(request.read_text())
+    document['requested_categories'] = ['visual']
+    request.write_text(json.dumps(document))
+    auth['request_sha256'] = digest(request.read_bytes())
+    if fake_mode != 'visual-success':
+        with pytest.raises(Exception):
+            runner.run_analysis(manifest, request, tmp_path / 'run', observed_upload_authorization=auth,
+                                agy=fake_agy(tmp_path, fake_mode), mode='visual')
+        assert not (tmp_path / 'run' / 'imported').exists()
+        return
+    report = runner.run_analysis(manifest, request, tmp_path / 'run', observed_upload_authorization=auth,
+                                agy=fake_agy(tmp_path, fake_mode), mode='visual', source_scan_timeout=3600)
+    analysis = json.loads((tmp_path / 'run' / 'analysis.json').read_text())
+    assert report['status'] == 'PASS'
+    assert report['mode'] == 'visual'
+    assert report['limits']['source_scan_timeout_seconds'] == 3600
+    assert len(analysis['segments']) == 1
+    assert analysis['segments'][0]['observation_type'] == 'visual'
+    assert analysis['segments'][0]['audible_content'] is None
+    assert analysis['segments'][0]['start_ms'] == 1100
+    assert analysis['segments'][0]['end_ms'] == 1700
+
+
+@pytest.mark.parametrize('timeout', [0, -1, True, '300', 1.5])
+def test_invalid_source_scan_timeout_never_dispatches(setup, tmp_path, timeout):
+    manifest, request, _, auth = setup
+    with pytest.raises(ValueError, match='Invalid source scan timeout'):
+        runner.run_analysis(manifest, request, tmp_path / 'run', observed_upload_authorization=auth,
+                            source_scan_timeout=timeout)
+    assert not (tmp_path / 'run').exists()

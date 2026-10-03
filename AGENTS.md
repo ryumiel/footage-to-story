@@ -32,6 +32,10 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
   Saved lock records require trusted historical context; resume never authorizes execution.
   Bounded zero-origin speech and synchronized video/dialogue extraction and the
   Antigravity agy adapter are implemented.
+  Explicit fast exploratory analysis may use reusable resized copies with
+  metadata and byte checks, labeled ANALYSIS_METADATA_ONLY. Exact cached
+  frame/audio correspondence remains NOT_RUN; this does not implement a
+  general proxy/export mapping or replace final original-source edit gates.
   Upload execution requires trusted-caller observed consent bound to exact input bytes,
   the sole enabled clip hook, and one native media read per budgeted attempt.
   Provider visual/speech boundaries, speaker identity, and quotation accuracy remain

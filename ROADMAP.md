@@ -84,7 +84,7 @@ See [adapter scope and limits](docs/antigravity-analysis.md).
 - [x] Extend verified staging and single-read permissions to synchronized video/speech.
   Analysis copies support explicitly selected audio and BT.709 10-bit-to-8-bit
   conversion before 360p resizing/padding; originals retain their bit depth.
-  Lossy H.264 CRF23 analysis copies undergo per-frame compression-tolerant visual
+  Lossy H.264 CRF18 analysis copies undergo per-frame compression-tolerant visual
   correspondence checks; rational FPS, frame count, audio sample counts, and
   shared zero origin are verified. Compressed audio remains in the MP4.
 - [x] Preserve separate typed visual/dialogue observations on one source clock.
@@ -96,3 +96,12 @@ See [adapter scope and limits](docs/antigravity-analysis.md).
 
 Do not implement all milestones before testing the simple non-AI export path.
 Unchecked M1 capabilities and explicitly deferred human verification remain open.
+
+## Exploratory analysis performance
+
+- [x] Explicit fast analysis path with one reusable 360p copy per source, reported timing/stream checks, byte bindings and cache invalidation.
+- [x] Bounded clip extraction from the smaller copy without repeated original decoding.
+- [x] Preserve strict staging as a separate default and keep final original-source edit/export gates unchanged.
+- [ ] General verified source/proxy mapping and exact cached-frame correspondence; fast analysis reports these as unverified.
+
+Fast results are `ANALYSIS_METADATA_ONLY`, not decoded-source proof or final export readiness.

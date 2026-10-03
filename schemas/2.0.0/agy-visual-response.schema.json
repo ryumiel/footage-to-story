@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://footage-to-story.example/schemas/2.0.0/agy-visual-response.schema.json",
+  "title": "Antigravity local visual-only observations (provider auxiliary contract)",
+  "type": "object",
+  "properties": {
+    "segments": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "properties": {
+          "segment_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "start_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "end_ms": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8192,
+            "pattern": "\\S"
+          },
+          "audible_content": {
+            "type": "null"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 32,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8192,
+              "pattern": "\\S"
+            }
+          },
+          "observation_type": {
+            "const": "visual"
+          },
+          "visible_content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8192,
+            "pattern": "\\S"
+          }
+        },
+        "required": [
+          "segment_id",
+          "start_ms",
+          "end_ms",
+          "summary",
+          "audible_content",
+          "confidence",
+          "evidence",
+          "observation_type",
+          "visible_content"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 8192,
+        "pattern": "\\S"
+      }
+    },
+    "video_available": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "segments",
+    "warnings",
+    "video_available"
+  ],
+  "additionalProperties": false
+}

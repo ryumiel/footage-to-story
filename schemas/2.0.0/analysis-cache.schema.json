@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://footage-to-story.example/schemas/2.0.0/analysis-cache.schema.json",
+  "title": "Exploratory analysis copy record; no exact export mapping",
+  "type": "object",
+  "properties": {
+    "job_id": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "source_id": {
+      "$ref": "https://footage-to-story.example/schemas/2.0.0/common.schema.json#/$defs/identifier"
+    },
+    "source_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "copy_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "copy_size_bytes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "fps_num": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "fps_den": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sample_rate": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "source_audio_stream_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_signature": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "channels": {
+      "enum": [
+        1,
+        2
+      ]
+    },
+    "decoder": {
+      "enum": [
+        "software",
+        "videotoolbox"
+      ]
+    },
+    "version": {
+      "const": "analysis-cache-1"
+    },
+    "validation_level": {
+      "const": "ANALYSIS_METADATA_ONLY"
+    },
+    "exact_frame_correspondence": {
+      "const": "NOT_RUN"
+    },
+    "exact_audio_correspondence": {
+      "const": "NOT_RUN"
+    },
+    "final_export_mapping": {
+      "const": "NOT_IMPLEMENTED"
+    }
+  },
+  "required": [
+    "job_id",
+    "source_id",
+    "source_path",
+    "manifest_sha256",
+    "source_sha256",
+    "copy_sha256",
+    "copy_size_bytes",
+    "fps_num",
+    "fps_den",
+    "sample_rate",
+    "width",
+    "height",
+    "duration_ms",
+    "source_audio_stream_index",
+    "source_signature",
+    "channels",
+    "decoder",
+    "version",
+    "validation_level",
+    "exact_frame_correspondence",
+    "exact_audio_correspondence",
+    "final_export_mapping"
+  ],
+  "additionalProperties": false
+}

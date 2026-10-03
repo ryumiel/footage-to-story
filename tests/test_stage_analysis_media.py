@@ -269,7 +269,7 @@ def test_stage_audiovisual_preserves_exact_frames_and_audio(input_pair, tmp_path
     assert clip["decoded_samples"] == 38400
     assert clip["video_correspondence"]["status"] == "PASS"
     assert clip["video_correspondence"]["frames_compared"] == 20
-    assert clip["video_encoding"] == {"codec": "libx264", "preset": "medium", "crf": 23}
+    assert clip["video_encoding"] == {"codec": "libx264", "preset": "medium", "crf": 18}
     assert clip["audio_decoded_samples_match"] is True
     assert clip["waveform_correlation"] > .98
     assert (output / clip["media_path"]).is_file()
@@ -463,3 +463,17 @@ def test_10bit_without_known_bt709_tags_is_rejected(tmp_path):
     with pytest.raises(ValueError, match="explicit BT.709"):
         stage_media(manifest, request, output, mode="audiovisual")
     assert not output.exists()
+
+
+def test_visual_staging_checks_synchronized_media_without_requesting_dialogue(input_pair, tmp_path):
+    movie, manifest, request = input_pair
+    document = json.loads(request.read_text())
+    document['requested_categories'] = ['visual']
+    request.write_text(json.dumps(document))
+    clip = stage_media(manifest, request, tmp_path / 'visual-stage', mode='visual',
+                       source_scan_timeout=120)['clips'][0]
+    assert clip['video_frame_count'] == 20
+    assert clip['video_correspondence']['status'] == 'PASS'
+    assert clip['decoded_samples'] == 38400
+    assert clip['source_audio_stream_index'] == 1
+    assert clip['audio_decoded_samples_match'] is True

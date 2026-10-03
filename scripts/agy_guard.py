@@ -15,7 +15,7 @@ except ImportError:
     from validate_json import ROOT, build_validator
 
 MAX_INPUT = 65536
-RESPONSE_SCHEMAS = {'agy-response.schema.json', 'agy-av-response.schema.json'}
+RESPONSE_SCHEMAS = {'agy-response.schema.json', 'agy-av-response.schema.json', 'agy-visual-response.schema.json'}
 
 
 def _pairs(pairs):
