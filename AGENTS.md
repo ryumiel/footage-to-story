@@ -20,7 +20,16 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
   Never repair a contract by inventing source IDs, evidence, dates, or permissions.
 - Keep cross-file/media invariants separate from schemas. Declared-document checks,
   source-hash/decoded-video scans, and sequential video edit checks are implemented;
-  zero-origin PCM sample cuts are implemented. Compressed-audio final-export conversion,
+  zero-origin PCM sample cuts and bounded native AAC-LC 48 kHz mono/stereo
+  presentation/sample-cut geometry are implemented. Native AAC keeps encoded
+  assets unchanged; Resolve AAC import/render synchronization passed a bounded synthetic stereo control;
+  audible listening and real-source playback synchronization remain NOT_RUN.
+  Bounded zero-origin H.264/HEVC + selected AAC source preparation removes unused
+  tracks/timecode in a new copy with encoded packet/clock identity checks and
+  original hash preservation. Native source-viewer playback passed on a prepared
+  real source; this does not establish measured real-source synchronization or
+  transfer any plan approval. Fresh prepared-file manifests and edit gates apply.
+  Compressed-audio final-export conversion,
   general nonzero-origin/proxy mapping, and a general conversation-host approval adapter
   are NOT implemented. Trusted callers may pass observed explicit user approval
   bound to exact plan bytes; saved HUMAN labels alone never authorize execution.

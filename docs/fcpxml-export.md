@@ -59,7 +59,8 @@ or job documents, invoke Resolve, upload data, or make editorial choices.
 - Rotation/video stream or decoded frame side data, embedded source timecode, cover art, and extra
   data/subtitle tracks are rejected until explicit mappings exist. Source PTS zero
   does not establish that embedded source timecode is zero.
-- SOURCE retains verified zero-origin contiguous PCM with exact integer sample
+- SOURCE retains verified zero-origin contiguous PCM or bounded native AAC-LC
+  presentation with exact integer sample
   cut boundaries, one common mono/stereo layout, and 48000 Hz sample rate. Other
   retained sample rates are unsupported by this exporter. MUTE emits an explicit FCPXML `video` item, omitting an audio component.
   Resolve 21 imported enabled audio despite `asset-clip srcEnable="video"` in the
@@ -144,3 +145,17 @@ manual missing-source relinking for an identical file, not proxy mapping or
 automatic relinking in the exporter. Runtime evidence is kept in ignored artifacts. A general conversation-host adapter and optional human-key custody acceptance
 remain outside this implementation.
 Do not call all of M1 complete based on generated XML or synthetic signatures.
+
+## Native AAC source references
+
+The serializer can retain bounded native AAC-LC 48 kHz mono/stereo assets after
+the fresh decoded presentation and exact sample-cut geometry checks described
+in `edit-verification.md`. Its asset URI still names the original encoded file;
+no transcoding, PCM replacement or decoder-delay offset is inserted. Generated
+AAC fixtures at 25 and 30000/1001 FPS pass signed synthetic export and official
+DTD checks with unchanged source bytes. These are structural/FFmpeg timing
+checks; native Resolve AAC import/render synchronization passed a bounded synthetic
+48 kHz stereo control at 25 FPS. Audible listening and real-source playback remain
+NOT_RUN. See `docs/native-aac-resolve-control.md`.
+Multiple audio tracks and embedded timecode still block export, including the
+unmodified DJI recordings. Approval gates and full fresh source checks remain.

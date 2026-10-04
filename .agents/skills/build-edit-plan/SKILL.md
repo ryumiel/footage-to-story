@@ -29,7 +29,9 @@ still needs genuine source identity and frame-boundary evidence.
 6. Calculate, rather than duplicate, duration from OUT minus IN. Check source bounds,
    timeline continuity, FPS, and audio assumptions before claiming readiness.
    `docs/edit-verification.md` describes implemented fresh-media video and exact
-   zero-origin PCM SOURCE/MUTE checks. Compressed-audio conversion, authentic
+   zero-origin PCM and bounded AAC-LC 48 kHz mono/stereo SOURCE/MUTE sample-cut
+   geometry. AAC stays encoded in its original asset; application playback sync
+   is separate and remains NOT_RUN. Compressed-audio conversion, authentic
    approval, and export remain separate gates; their implemented commands and limits
    are in `docs/approval-verification.md` and `docs/fcpxml-export.md`.
    Use the implemented checks within their documented scope; passing video

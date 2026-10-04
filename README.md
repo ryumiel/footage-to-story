@@ -20,7 +20,15 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Bound source-byte checks and conservative decoded video timing scans for MOV/MP4 and WAV.
 - Fresh-media sequential video edit checks for source bounds, exact FPS, and timeline continuity.
 - Exact zero-origin PCM sample cuts and SOURCE/MUTE checks in the fresh edit gate.
+- Bounded zero-origin AAC-LC 48 kHz mono/stereo decoded presentation clocks and
+  sample-cut geometry, retaining original AAC assets in FCPXML. Resolve AAC
+  import/render synchronization passed a bounded synthetic stereo control; audible
+  listening and real-source playback synchronization remain NOT_RUN.
 - Trusted-conversation approval bound to exact plan bytes/revision, with optional OpenSSH verification.
+- [Bounded Resolve source preparation](docs/resolve-media-preparation.md) selects
+  one AAC stream and removes unused tracks/timecode in a packet-identical copy.
+  Native source-viewer playback passed on a prepared real HEVC/AAC source;
+  measured real-source synchronization remains NOT_RUN.
 - Bounded deterministic FCPXML 1.7 export with fresh gates and pinned official DTD validation.
 - Deterministic profile inheritance with exact parent-version/byte bindings.
 - Local observation/SRT imports with preserved raw provenance and source language.
@@ -33,7 +41,7 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Synthetic positive fixtures, negative tests, and explicit validation-boundary tests.
 - English instructions, migration guidance, architecture, and a design review.
 
-Compressed-audio final-export timing/conversion, general nonzero-origin/proxy maps,
+General compressed-audio conversion, general nonzero-origin/proxy maps,
 and a general conversation-host approval adapter remain unimplemented. The Gemini
 adapter supports bounded zero-origin speech clips and synchronized video/dialogue
 clips; general non-speech sound descriptions and a hard provider billing ceiling

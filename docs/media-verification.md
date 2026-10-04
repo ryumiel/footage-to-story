@@ -129,3 +129,10 @@ missing/estimated PTS, durations, nonzero origins, unknown/ambiguous streams,
 inventory mismatches, hash binding, input preservation, batch mutations, and
 timeout/size/error handling. Generated media stays in external temporary storage.
 Run `python -m pytest -q` and store machine reports under `artifacts/validation/`.
+
+For AAC-LC MOV/MP4 audio, `audio.timing.mode: AAC_NATIVE` denotes the bounded
+zero-origin 48 kHz mono/stereo presentation checks in `edit-verification.md`.
+Encoded source bytes remain unchanged. Nonzero/unknown origin, unsupported
+profiles, unknown priming, unexplained tail samples, discontinuities and format
+changes fail. This does not measure Resolve decoder behavior or acoustic sync.
+Other compressed codecs retain unsupported timing results.

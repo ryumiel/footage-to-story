@@ -1,4 +1,4 @@
-"""Conservative zero-origin PCM timing and exact sample-cut calculations."""
+"""Bounded decoded PCM/AAC presentation clocks and exact sample-cut arithmetic."""
 from __future__ import annotations
 
 from fractions import Fraction
@@ -72,3 +72,59 @@ def sample_cut(timing: dict, source_in: int, source_out: int, timeline_in: int,
     return {"status": "PASS", "issues": [], "sample_rate": rate,
             "source_in_sample": start, "source_out_sample": end,
             "timeline_in_sample": offset, "timeline_out_sample": offset + end - start}
+
+
+def analyze_aac(stream: dict, frames: list[dict]) -> dict:
+    """Check decoded AAC-LC presentation after demuxer priming/trim handling.
+
+    The asset remains compressed. This does not assert that another application's
+    decoder matches FFmpeg, nor support unknown offsets, resampling or profiles.
+    """
+    issues = []
+    result = {"status": "FAIL", "issues": issues, "sample_rate": 48000,
+              "sample_count": None, "duration_seconds": None,
+              "mode": "AAC_NATIVE", "application_decode_sync": "NOT_RUN"}
+    rate = positive_integer(stream.get("sample_rate"))
+    channels = positive_integer(stream.get("channels"))
+    base = positive_rate(stream.get("time_base"))
+    padding = stream.get("initial_padding", 0)
+    duration = positive_integer(stream.get("duration_ts"))
+    if (stream.get("codec_name") != "aac" or stream.get("profile") != "LC"
+            or rate != 48000 or channels not in (1, 2)
+            or base != Fraction(1, 48000) or stream.get("sample_fmt") != "fltp"):
+        issues.append("AAC_PROFILE_OR_FORMAT_UNSUPPORTED")
+    if (type(padding) is not int or padding not in (0, 1024)
+            or type(stream.get("trailing_padding", 0)) is not int
+            or stream.get("trailing_padding", 0) != 0):
+        issues.append("AAC_PADDING_UNSUPPORTED")
+    if type(stream.get("start_pts")) is not int or stream["start_pts"] != 0 or duration is None:
+        issues.append("AAC_PRESENTATION_BOUNDS_UNKNOWN_OR_NONZERO")
+    if not frames:
+        issues.append("NO_DECODED_AAC")
+    if issues:
+        return result
+    expected = 0
+    for number, frame in enumerate(frames):
+        pts, count, ticks = frame.get("pts"), frame.get("nb_samples"), frame.get("duration")
+        if (type(pts) is not int or type(count) is not int or type(ticks) is not int
+                or not 0 < count <= 1024 or abs(pts) > MAX_INTEGER):
+            issues.append("AAC_DECODED_TIMING_UNKNOWN")
+            break
+        if number < len(frames) - 1 and count != 1024:
+            issues.append("AAC_INTERIOR_PARTIAL_FRAME_UNSUPPORTED")
+        if pts != expected or ticks != count:
+            issues.append("AAC_PRESENTATION_GAP_OVERLAP_OR_DURATION")
+        if (frame.get("channels") != channels or frame.get("sample_fmt") != "fltp"
+                or frame.get("side_data_list")):
+            issues.append("AAC_DECODED_FORMAT_OR_SIDE_DATA_UNSUPPORTED")
+        expected = pts + count
+        if expected > MAX_INTEGER:
+            issues.append("AAC_SAMPLE_INTEGER_BOUND")
+    if expected != duration:
+        issues.append("AAC_DECODED_PRESENTATION_DURATION_MISMATCH")
+    if not issues:
+        seconds = Fraction(expected, 48000)
+        result.update(status="PASS", sample_count=expected,
+                      duration_seconds={"num": seconds.numerator, "den": seconds.denominator},
+                      initial_padding_samples=padding, presentation_origin_samples=0)
+    return result

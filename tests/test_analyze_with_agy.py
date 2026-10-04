@@ -91,8 +91,9 @@ if '/hooks' in sys.argv:
         'thinking_tokens':0,'total_tokens':0}, 'command':{'name':'hooks','data':{'hooks':[
         {'name':'bounded-media-guard','enabled':True,'source':str(hookfile),
          'actions':[{'event':'PreToolUse','matcher':'*','type':'command',
-                     'command':config['command'],'timeout_seconds':5}]}]}}}
+                     'command':config['command'],'timeout_seconds':config['timeout']}]}]}}}
     if mode == 'missing-hook': inventory['command']['data']['hooks'] = []
+    if mode == 'wrong-hook-timeout': inventory['command']['data']['hooks'][0]['actions'][0]['timeout_seconds'] = 1
     print(json.dumps(inventory))
     if mode == 'blank-hook': print('\\n')
     sys.exit(0)
@@ -366,9 +367,10 @@ def test_rejected_response_preserves_known_final_usage(setup, tmp_path, mode):
     assert not (tmp_path / 'run' / 'imported').exists()
 
 
-def test_missing_loaded_hook_blocks_before_provider_dispatch(setup, tmp_path):
+@pytest.mark.parametrize('mode', ['missing-hook', 'wrong-hook-timeout'])
+def test_missing_loaded_hook_blocks_before_provider_dispatch(setup, tmp_path, mode):
     with pytest.raises(ValueError, match='hook is missing'):
-        call(setup, tmp_path, mode='missing-hook')
+        call(setup, tmp_path, mode=mode)
     output = tmp_path / 'run'
     assert not (output / 'imported').exists()
     assert (output / 'clip-01-attempt-01' / 'hooks-inspection.json').exists()

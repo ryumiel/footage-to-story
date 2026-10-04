@@ -103,7 +103,7 @@ def test_live_generated_media_and_raw_binding(tmp_path, audio_codec):
     from scripts.verify_edit import verify_edit
     export_check = verify_edit(paths, tmp_path/'export-check')
     assert export_check['scope'] == 'EDIT_AUDIO_VIDEO'
-    assert export_check['status'] == ('PASS' if audio_codec == 'pcm_s16le' else 'FAIL')
+    assert export_check['status'] == ('PASS' if audio_codec in {'pcm_s16le', 'aac'} else 'FAIL')
     assert not list(tmp_path.rglob('*.wav'))
     assert report['entries'][0]['end_ms']==600
     assert '00:00:00,000 --> 00:00:00,600' in (tmp_path/'mapped/subtitles.srt').read_text()

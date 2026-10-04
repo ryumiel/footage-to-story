@@ -11,13 +11,23 @@ Current input contracts live in `schemas/2.0.0/`.
 
 ## Present implementation status
 
-**Document, fresh-media, sequential-video, and zero-origin PCM cut checks exist.
+**Document, fresh-media, sequential-video, zero-origin PCM and bounded native
+AAC-LC 48 kHz mono/stereo presentation/sample-cut checks exist.
 External-trust signature and exact plan approval-binding checks exist; a general
 conversation-host adapter remains pending. A bounded deterministic FCPXML 1.7 exporter
 and official DTD validation exist (`docs/fcpxml-export.md`).** Bounded synthetic
 Resolve 21 import, exact cut structure, PCM tone/silence render, and manual
 moved-source relinking have passed. Audible listening remains NOT_RUN.
 Do not infer general application compatibility from these fixture checks.
+Native AAC serialization retains unchanged encoded assets; Resolve
+import/render synchronization passed a bounded synthetic stereo control at 25 FPS.
+Bounded zero-origin source preparation can select one AAC stream and omit unused
+tracks/timecode in a new packet-identical copy; see
+`docs/resolve-media-preparation.md`. Build a fresh prepared-file manifest and run
+fresh gates; preparation does not transfer an existing plan approval.
+Native source-viewer playback passed on a prepared real HEVC/AAC source.
+Audible listening and measured real-source synchronization remain NOT_RUN. Other AAC profiles, nonzero
+origins, unexplained padding, mixed formats and general conversion remain blocked.
 
 ## Required gates before an export
 

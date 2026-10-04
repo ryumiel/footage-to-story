@@ -68,10 +68,11 @@ plan must choose supported boundaries and pass the exact containment comparison.
 
 ## SOURCE and MUTE audio rules
 
-SOURCE requires decoded zero-origin contiguous PCM audio with stable sample format
-and channels. Every frame duration must match its sample count at the reported
-sample rate. Padding, side data, gaps, overlaps, and compressed audio fail this
-audio gate. Source IN/OUT and timeline IN must land on exact integer sample
+SOURCE requires decoded zero-origin contiguous PCM audio or the bounded native
+AAC presentation described below, with stable sample format and channels.
+Every frame duration must match its sample count at the reported
+sample rate. Unexplained padding, side data, gaps, overlaps, and unsupported
+compressed profiles fail this audio gate. Source IN/OUT and timeline IN must land on exact integer sample
 boundaries; no rounding or resampling is applied. Cuts cannot exceed decoded
 audio samples. SOURCE clips must share one sample rate and mono/stereo channel
 count. Video-only sources require explicit MUTE. MUTE does not require passing
@@ -128,3 +129,30 @@ accepted when a decoded audio stream exists. Its `SUBTITLE_TIMING` scope and
 `execution_authorized: false` prevent interpreting this result as export readiness.
 The full `verify_edit` API and CLI still require the implemented exact audio checks.
 Neither path replaces originals or writes persistent decoded PCM media.
+
+## Bounded native AAC assets
+
+The fresh scan also accepts AAC-LC in a MOV/MP4 container with 48000 Hz mono or
+stereo `fltp` decoded audio, a `1/48000` clock, known zero `start_pts`, and a known
+presentation duration. Initial padding must be absent/zero or 1024 samples;
+trailing-padding declarations other than zero fail. Every decoded frame must
+begin exactly where the preceding frame ends and its duration must equal its
+sample count. Interior frames must have 1024 samples; the last may be shorter
+only when the decoded total exactly matches the declared presentation duration.
+Unexpected side data, profiles, formats, origins, gaps, overlaps and unexplained
+priming/tail lengths fail. No samples or offsets are repaired or rounded.
+
+This measures the decoded presentation after FFmpeg's demuxer/decoder handles
+priming and tail trimming. It does not assert equivalent behavior in Resolve.
+Exact sample-cut arithmetic remains unchanged, including five-frame alignment
+at 30000/1001 FPS and 48000 Hz. The report labels this mode `AAC_NATIVE` and
+application decode synchronization `NOT_RUN`. The original AAC asset remains
+unchanged; no PCM intermediate or conversion is introduced.
+
+Existing multiple-audio-track, embedded-timecode, proxy and geometry export
+restrictions remain. Passing bounded AAC timing does not make the DJI job export
+ready. Synthetic signed native-AAC exports pass schema, fresh media/edit gates,
+original-byte preservation and official XML DTD validation; native Resolve AAC
+import/render synchronization passed a bounded synthetic stereo control at 25 FPS;
+audible listening and real-source playback remain NOT_RUN. See
+`docs/native-aac-resolve-control.md`.

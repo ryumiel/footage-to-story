@@ -25,7 +25,14 @@
 - [x] Verify edit bounds against fresh decoded media and zero-origin CFR select-time windows.
 - [x] Check exact sequential video timeline continuity, frame counts, FPS, and duration.
 - [x] Verify zero-origin contiguous PCM timing and exact SOURCE/MUTE sample cuts.
+- [x] Add bounded native AAC-LC 48 kHz mono/stereo presentation and sample-cut
+  checks; synthetic signed export retains unchanged encoded source references.
+- [x] Verify native AAC Resolve import/render synchronization with a bounded synthetic
+  48 kHz stereo fixture at 25 FPS; audible listening and real-source playback remain NOT_RUN.
 - [ ] Implement general nonzero-origin/source-proxy mappings and compressed-audio final-export timing/conversion.
+- [x] Prepare bounded zero-origin H.264/HEVC + selected AAC stream copies with
+  packet payload/clock identity checks and original hash preservation; test
+  native source-viewer playback. Real-source render synchronization remains NOT_RUN.
 - [x] Verify externally trusted review signatures, job/revision, and exact plan digest.
 - [x] Accept observed explicit user approval through a trusted caller, bound to exact plan bytes.
 - [ ] Implement a general conversation-host adapter; optionally deploy human signing authority.

@@ -117,13 +117,14 @@ def test_xml_official_dtd_validation_and_invalid_reference(sample, dtd):
 
 @pytest.fixture
 def run(tmp_path, monkeypatch, dtd, request):
-    ntsc = getattr(request, 'param', '25') == 'ntsc'
+    variant = getattr(request, 'param', '25')
+    ntsc = variant in {'ntsc', 'aac-ntsc'}
     media_path = tmp_path / 'Synthetic Ω & media.mov'
     subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-f', 'lavfi', '-i',
                     f'testsrc=size=64x48:rate={"30000/1001" if ntsc else "25"}',
                     '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000',
                     '-t', '1.001' if ntsc else '1', '-c:v', 'mpeg4', '-pix_fmt', 'yuv420p',
-                    '-c:a', 'pcm_s16le', str(media_path)], check=True, capture_output=True, timeout=30)
+                    '-c:a', 'aac' if variant.startswith('aac') else 'pcm_s16le', str(media_path)], check=True, capture_output=True, timeout=30)
     build_manifest('synthetic-export', [('src-1', media_path)], tmp_path / 'inventory')
     plan = {'schema_version': '2.0.0', 'job_id': 'synthetic-export', 'revision': 'synthetic-r1',
             'timeline_name': 'Synthetic exporter acceptance', 'edit_mode': 'SEQUENTIAL_CUTS',
@@ -152,8 +153,9 @@ def run(tmp_path, monkeypatch, dtd, request):
     return paths, Path(str(review_path) + '.sig'), dtd, tmp_path / 'export', media_path
 
 
-@pytest.mark.parametrize('run', ['25', 'ntsc'], indirect=True)
+@pytest.mark.parametrize('run', ['25', 'ntsc', 'aac', 'aac-ntsc'], indirect=True)
 def test_live_signed_synthetic_export_passes_dtd_and_fresh_gates(run):
+    original_media_hash = hashlib.sha256(run[4].read_bytes()).hexdigest()
     report = ex.export(*run[:4])
     assert report['status'] == 'PASS'
     assert report['timeline_frame_count'] == 15
@@ -166,6 +168,11 @@ def test_live_signed_synthetic_export_passes_dtd_and_fresh_gates(run):
     assert root.find('resources/asset').get('src') == run[4].as_uri()
     assert load_json(output / 'check/edit-report.json')['items'][0]['audio_cut']['status'] == 'PASS'
     assert 'actual Resolve import/relinking/audio playback' in report['not_checked']
+    assert hashlib.sha256(run[4].read_bytes()).hexdigest() == original_media_hash
+    measured = load_json(output / 'check/media/media-report.json')['sources'][0]['audio']['timing']
+    if measured.get('mode') == 'AAC_NATIVE':
+        assert measured['application_decode_sync'] == 'NOT_RUN'
+        assert not list(output.rglob('*.wav'))
 
 
 def test_locked_synthetic_export_requires_live_context_and_fresh_binding(run):

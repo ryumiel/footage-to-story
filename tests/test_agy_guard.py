@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 import sys
 import pytest
-from scripts.agy_guard import write_guard, evaluate
+from scripts.agy_guard import GUARD_TIMEOUT_SECONDS, write_guard, evaluate
 
 @pytest.fixture
 def setup(tmp_path):
@@ -62,7 +62,7 @@ def test_deep_bounded_hook_input_returns_explicit_deny(setup):
     _, guard, _ = setup
     raw = '[' * 20000 + '0' + ']' * 20000
     result = subprocess.run([sys.executable, 'scripts/agy_guard.py', guard['policy_path'], guard['audit_path']],
-                            input=raw, text=True, capture_output=True, check=True, timeout=5)
+                            input=raw, text=True, capture_output=True, check=True, timeout=GUARD_TIMEOUT_SECONDS)
     assert json.loads(result.stdout)['decision'] == 'deny'
 
 
@@ -86,7 +86,7 @@ def test_concurrent_reads_allow_at_most_one(setup):
         p.stdin.write(event)
         p.stdin.close()
         p.stdin = None
-    outputs=[p.communicate(timeout=5)[0] for p in processes]
+    outputs=[p.communicate(timeout=GUARD_TIMEOUT_SECONDS)[0] for p in processes]
     assert sum(json.loads(o)['decision']=='allow' for o in outputs)==1
 
 

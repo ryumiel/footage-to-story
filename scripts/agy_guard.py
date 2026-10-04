@@ -15,6 +15,7 @@ except ImportError:
     from validate_json import ROOT, build_validator
 
 MAX_INPUT = 65536
+GUARD_TIMEOUT_SECONDS = 15
 RESPONSE_SCHEMAS = {'agy-response.schema.json', 'agy-av-response.schema.json', 'agy-visual-response.schema.json'}
 
 
@@ -123,7 +124,7 @@ def write_guard(workspace: Path, media: Path, *, response_schema: str = 'agy-res
     guard_path = Path(__file__).resolve()
     command = shlex.join([sys.executable, str(guard_path), str(policy_path), str(audit_path)])
     hooks = {'bounded-media-guard': {'PreToolUse': [{'matcher': '*', 'hooks': [
-        {'type': 'command', 'command': command, 'timeout': 5}]}]}}
+        {'type': 'command', 'command': command, 'timeout': GUARD_TIMEOUT_SECONDS}]}]}}
     hooks_path.write_text(json.dumps(hooks, indent=2) + '\n')
     for p in (policy_path, hooks_path):
         p.chmod(0o400)

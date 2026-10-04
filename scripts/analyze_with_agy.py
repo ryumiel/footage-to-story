@@ -21,14 +21,14 @@ import time
 from typing import Any
 
 try:
-    from .agy_guard import write_guard
+    from .agy_guard import GUARD_TIMEOUT_SECONDS, write_guard
     from .stage_analysis_media import stage_media
     from .import_editorial import encoded, import_analysis, output_path, parse
     from .validate_json import ROOT, build_validator
     from .check_integrity import check_documents
     from .verify_approval import _read
 except ImportError:
-    from agy_guard import write_guard
+    from agy_guard import GUARD_TIMEOUT_SECONDS, write_guard
     from stage_analysis_media import stage_media
     from import_editorial import encoded, import_analysis, output_path, parse
     from validate_json import ROOT, build_validator
@@ -187,7 +187,7 @@ def _preflight_guard(guard: dict) -> None:
             raise ValueError('Hook command differs from bound guard')
         workspace = Path(guard['policy_path']).parent.parent
         stdout, stderr = workspace / 'hook-preflight.json', workspace / 'hook-preflight.stderr'
-        status = _run_process(command, workspace, 5, 65536, stdout, stderr, 0,
+        status = _run_process(command, workspace, GUARD_TIMEOUT_SECONDS, 65536, stdout, stderr, 0,
                               input_bytes=b'{"toolCall":{"name":"run_command","args":{}}}')
         if status != 'OK' or parse(_read(stdout)).get('decision') != 'deny':
             raise ValueError('Hook did not deny preflight tool')
@@ -205,7 +205,7 @@ def _inspect_loaded_hook(agy: str, workspace: Path, guard: dict, timeout: int,
     stdout = workspace / 'hooks-inspection.json'
     stderr = workspace / 'hooks-inspection.stderr'
     status = _run_process([agy, '-p', '/hooks', '--output-format', 'json'], workspace,
-                          min(max(timeout, 5), 15), max_output_bytes, stdout, stderr, 0)
+                          min(max(timeout, GUARD_TIMEOUT_SECONDS), 30), max_output_bytes, stdout, stderr, 0)
     if status != 'OK':
         raise ValueError(f'agy hook inventory command failed: {status}')
     inventory = parse(_read(stdout))
@@ -220,7 +220,7 @@ def _inspect_loaded_hook(agy: str, workspace: Path, guard: dict, timeout: int,
     if len(enabled) != 1 or enabled[0].get('name') != 'bounded-media-guard' or \
             Path(enabled[0].get('source', '')).resolve() != Path(guard['hooks_path']).resolve() or \
             enabled[0].get('actions') != [{'event': 'PreToolUse', 'matcher': '*', 'type': 'command',
-                                          'command': configured['command'], 'timeout_seconds': 5}]:
+                                          'command': configured['command'], 'timeout_seconds': GUARD_TIMEOUT_SECONDS}]:
         raise ValueError('Bounded media hook is missing, altered, or has competing enabled hooks')
 
 

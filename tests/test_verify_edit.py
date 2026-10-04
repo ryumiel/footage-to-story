@@ -318,17 +318,17 @@ def test_generated_video_edit_cli(tmp_path, rate, frames, den):
 
 
 @pytest.mark.skipif(not shutil.which("ffmpeg") or not shutil.which("ffprobe"), reason="Requires real FFmpeg tools")
-@pytest.mark.parametrize("case", ["pcm", "ntsc", "shifted", "compressed", "fractional", "mute-shifted"])
+@pytest.mark.parametrize("case", ["pcm", "ntsc", "shifted", "compressed", "compressed-shifted", "fractional", "mute-shifted"])
 def test_generated_source_audio_clock_and_cuts(tmp_path, case):
     ntsc = case in {"ntsc", "fractional"}
     media = tmp_path / "synthetic-av.mov"
     command = ["ffmpeg", "-nostdin", "-v", "error", "-f", "lavfi", "-i",
                f"testsrc=size=64x48:rate={'30000/1001' if ntsc else '25'}"]
-    if case in {"shifted", "mute-shifted"}:
+    if case in {"shifted", "compressed-shifted", "mute-shifted"}:
         command += ["-itsoffset", "0.04"]
     command += ["-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000",
                 "-t", "1.001" if ntsc else "1", "-c:v", "mpeg4", "-pix_fmt", "yuv420p",
-                "-c:a", "aac" if case == "compressed" else "pcm_s16le", str(media)]
+                "-c:a", "aac" if case.startswith("compressed") else "pcm_s16le", str(media)]
     subprocess.run(command, check=True, capture_output=True, timeout=30)
     build_manifest("synthetic-av", [("src-1", media)], tmp_path / "inventory")
     frames, split = (30, 1 if case == "fractional" else 5) if ntsc else (25, 5)
@@ -343,7 +343,7 @@ def test_generated_source_audio_clock_and_cuts(tmp_path, case):
     plan_path = tmp_path / "edit-plan.json"
     plan_path.write_text(json.dumps(plan), encoding="utf-8")
     report = ve.verify_edit({"manifest": tmp_path / "inventory/manifest.json", "edit-plan": plan_path}, tmp_path / "checked")
-    if case in {"pcm", "ntsc", "mute-shifted"}:
+    if case in {"pcm", "ntsc", "compressed", "mute-shifted"}:
         assert report["status"] == "PASS", report["issues"]
         if case != "mute-shifted":
             assert report["items"][0]["audio_cut"]["source_out_sample"] == (8008 if ntsc else 9600)

@@ -105,6 +105,9 @@ def analyze_edit(documents: dict, media: dict, *, subtitle_timing: bool = False)
                                  'reason': 'Subtitle timing does not verify audio sample cuts'}
                 else:
                     audio_cut = sample_cut(audio["timing"], source_in, source_out, timeline_in, fps)
+                    if audio["timing"].get('mode') == 'AAC_NATIVE':
+                        audio_cut.update(timing_mode='AAC_NATIVE', original_encoded_asset_retained=True,
+                                         application_decode_sync='NOT_RUN')
                     audio_format = (audio["sample_rate"], audio["channels"])
                     if audio["channels"] not in (1, 2):
                         issue(path + "/audio_policy", "MULTICHANNEL_AUDIO_UNSUPPORTED", "Only mono/stereo SOURCE audio is implemented")
@@ -128,7 +131,7 @@ def analyze_edit(documents: dict, media: dict, *, subtitle_timing: bool = False)
 
 def verify_edit(paths: dict[str, Path], output: Path, ffprobe: str = "ffprobe",
                 timeout: float = 60, max_bytes: int = 64 * 1024 * 1024) -> dict:
-    """Fresh video and exact audio-cut verification for the exporter."""
+    """Fresh video and decoded PCM/bounded native AAC sample-cut geometry."""
     return _verify_edit(paths, output, ffprobe, timeout, max_bytes, subtitle_timing=False)
 
 

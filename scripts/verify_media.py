@@ -20,13 +20,13 @@ from referencing.exceptions import Unresolvable
 try:
     from .validate_json import load_json, _unique_object, _reject_constant
     from .check_integrity import check_documents
-    from .audio_timing import analyze_pcm
+    from .audio_timing import analyze_aac, analyze_pcm
     from .probe_manifest import (MAX_INTEGER, check_output_directory, file_signature,
                                  positive_integer, positive_rate, run_probe_command)
 except ImportError:
     from validate_json import load_json, _unique_object, _reject_constant
     from check_integrity import check_documents
-    from audio_timing import analyze_pcm
+    from audio_timing import analyze_aac, analyze_pcm
     from probe_manifest import (MAX_INTEGER, check_output_directory, file_signature,
                                 positive_integer, positive_rate, run_probe_command)
 
@@ -126,7 +126,11 @@ def summarize_decode(probe: dict, audio_stream_index: int | None = None) -> dict
                  "decoded_samples": sum(samples) if decoded and all(sample is not None for sample in samples) else None,
                  "sample_rate": positive_integer(stream.get("sample_rate")),
                  "channels": positive_integer(stream.get("channels"))}
-        audio["timing"] = analyze_pcm(stream, decoded)
+        audio["timing"] = (analyze_aac(stream, decoded) if stream.get("codec_name") == "aac"
+                           else analyze_pcm(stream, decoded))
+        if stream.get("codec_name") == "aac" and 'mov' not in probe.get('format', {}).get('format_name', '').split(','):
+            audio["timing"]["status"] = "FAIL"
+            audio["timing"]["issues"].append("AAC_CONTAINER_UNSUPPORTED")
         if audio["sample_rate"] is None or audio["channels"] is None:
             issues.append("UNKNOWN_AUDIO_FORMAT")
     if video:

@@ -209,6 +209,12 @@ Official provider contracts: [CLI hooks](https://antigravity.google/docs/hooks/)
 
 ### Local staging resources
 
+The native media guard and its local preflight each have a 15-second deadline
+to accommodate Python/schema-library startup. The zero-token hook inventory
+has a deadline of at most 30 seconds. Inventory must still report the sole
+enabled guard with its exact configured timeout; provider runtime budgets are
+unchanged. A deadline expiry blocks dispatch rather than bypassing the guard.
+
 The runner accepts `staging_timeout` separately from its provider `timeout`. Use a
 bounded longer staging timeout for slow original decoding, such as 300 seconds
 per local subprocess for the Ceretto smoke test. Default staging timeout is 60
