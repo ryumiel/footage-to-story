@@ -23,6 +23,19 @@ pin. The official DTD retains its copyright comments in runtime storage and is
 not vendored in Git. This download requires network access; exporting is offline
 and never fetches a DTD automatically.
 
+## Operational checks and development qualification
+
+Normal real-job exports use lightweight operational checks: current file
+existence/readability and SHA-256 identity, reported metadata and supported
+mapping, cut bounds/timeline arithmetic, nominal audio geometry, exact-plan human
+approval, and official XML validation. Reports label this
+`OPERATIONAL_METADATA_ONLY`; decoded frame/audio timing and measured sync remain
+`NOT_RUN`. Exhaustive decoding and import/render controls qualify the pipeline
+on small synthetic fixtures during development or relevant implementation
+changes. Do not require an exhaustive real-source scan before initial use or
+repeat synthetic controls per export. Decode real media only for a concrete
+issue or an explicit user request. No arbitrary cached PASS label grants trust.
+
 ## Execution command
 
 Obtain actual human approval of the exact plan through the trusted conversation
@@ -47,21 +60,39 @@ synthetic approvals as actual authority. Conversation approval needs no key enro
 authorize the API, and the CLI cannot replay a conversation receipt.
 
 The output must be a new external directory or `artifacts/<job_id>/<new-run>`.
+The default `--media-validation operational` (API `media_validation="operational"`)
+checks current hashes and bounded `-show_streams/-show_format` metadata without
+`-show_frames` or `-count_frames`. `--media-timeout` and
+`--media-max-output-bytes` bound each probe. `--media-validation decoded` is an
+explicit diagnostic/development path, with 1–4 `--media-workers`; it is not a
+normal real-job prerequisite. Defaults are 60 seconds, 64 MiB and one worker.
+Limits are recorded in the report.
 Repository `work/` is not an export destination. The command does not modify media
 or job documents, invoke Resolve, upload data, or make editorial choices.
 
 ## Supported mapping
 
+Used sources must have distinct filenames (case-insensitive), even across
+different folders. Resolve can otherwise attach audio to another asset sharing
+the same basename. Source preparation names its copies with the original stem
+and content-hash prefix; already-prepared files may be renamed with relocation
+provenance and a new manifest. Plan bytes and source content stay unchanged.
+
+
 - Nonempty sequential cuts, 0-based and OUT-exclusive, with exact source/timeline
-  FPS equality and zero-origin decoded CFR media. No gaps, overlaps, or retiming.
-- Every used source must have the same known raster. Every decoded video frame
-  must preserve that raster and be progressive. Pixel aspect ratio must be 1:1.
+  FPS equality and a compatible reported zero-origin frame grid. Metadata is not measured CFR. No gaps, overlaps, or retiming.
+- Every used source must have the same known raster. Reported interlaced scan is rejected. When H.264/HEVC omits pixel aspect or
+  scan type, operational import uses square pixels/progressive defaults and
+  records those assumptions in `operational_mapping_defaults`; this is not
+  decoded raster proof. Declared non-square pixels remain unsupported. The diagnostic decoded mode additionally
+  checks every decoded frame for raster and scan stability. Pixel aspect ratio must be 1:1.
 - Rotation/video stream or decoded frame side data, embedded source timecode, cover art, and extra
   data/subtitle tracks are rejected until explicit mappings exist. Source PTS zero
   does not establish that embedded source timecode is zero.
-- SOURCE retains verified zero-origin contiguous PCM or bounded native AAC-LC
-  presentation with exact integer sample
-  cut boundaries, one common mono/stereo layout, and 48000 Hz sample rate. Other
+- SOURCE retains reported zero-origin 48 kHz mono/stereo PCM or AAC-LC
+  with integer nominal sample cut boundaries. Decoded priming/continuity and
+  measured synchronization are NOT_RUN in operational mode; the diagnostic path
+  additionally verifies decoded presentation/sample geometry, one common mono/stereo layout, and 48000 Hz sample rate. Other
   retained sample rates are unsupported by this exporter. MUTE emits an explicit FCPXML `video` item, omitting an audio component.
   Resolve 21 imported enabled audio despite `asset-clip srcEnable="video"` in the
   first synthetic test, so that implicit-component representation is not used.
@@ -80,10 +111,11 @@ or job documents, invoke Resolve, upload data, or make editorial choices.
 ## Fresh execution boundary
 
 The exporter snapshots exact document/signature bytes into a private temporary
-run. It verifies the live conversation approval or optional signed review, runs the live `verify_edit` decoder checks on
+run. It verifies the live conversation approval or optional signed review, runs the current operational edit/media checks on
 those same document bytes, and compares the approval/edit plan and review digests.
 It never consumes an arbitrary saved PASS report or exposes a gate-bypass flag.
-All inventory sources must pass the media scan, even unused sources.
+All inventory sources receive current hash/metadata checks, including unused sources.
+Full decoding is not required for real initial use or routine export.
 
 It generates XML with Python's standard XML serializer, then validates against the
 checksum-pinned official DTD with system `/usr/bin/xmllint --nonet --dtdvalid`.
@@ -149,7 +181,8 @@ Do not call all of M1 complete based on generated XML or synthetic signatures.
 ## Native AAC source references
 
 The serializer can retain bounded native AAC-LC 48 kHz mono/stereo assets after
-the fresh decoded presentation and exact sample-cut geometry checks described
+nominal sample-cut checks in operational mode, or diagnostic decoded
+presentation/sample-cut checks described
 in `edit-verification.md`. Its asset URI still names the original encoded file;
 no transcoding, PCM replacement or decoder-delay offset is inserted. Generated
 AAC fixtures at 25 and 30000/1001 FPS pass signed synthetic export and official
@@ -158,4 +191,4 @@ checks; native Resolve AAC import/render synchronization passed a bounded synthe
 48 kHz stereo control at 25 FPS. Audible listening and real-source playback remain
 NOT_RUN. See `docs/native-aac-resolve-control.md`.
 Multiple audio tracks and embedded timecode still block export, including the
-unmodified DJI recordings. Approval gates and full fresh source checks remain.
+unmodified DJI recordings. Exact approval and current operational source checks remain; full decoding is optional diagnosis.

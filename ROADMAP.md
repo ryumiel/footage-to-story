@@ -14,6 +14,10 @@
 
 ## M1 - Deterministic non-AI execution path
 
+- [x] Separate small synthetic pipeline qualification from routine real-job export;
+  default to current hashes/reported mapping, exact plan math/approval and XML.
+  Decoded timing remains NOT_RUN; real-source decoding is issue-driven or explicitly requested.
+
 - [x] Capture and verify exact Python runtime/test resolution for the local target.
 - [ ] Package/pin external tools and build runtimes for a fully locked deployment.
 - [x] Extract a media manifest with ffprobe and document evidence for metadata.

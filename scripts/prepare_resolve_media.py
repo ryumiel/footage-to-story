@@ -135,7 +135,7 @@ def prepare(source: Path, audio_index: int, output: Path, *, expected_sha256: st
         if audio[0]['codec_name'] != 'aac' or audio[0].get('profile') != 'LC' or audio[0].get('sample_rate') != '48000' or audio[0].get('channels') not in (1, 2):
             raise ValueError('Only AAC-LC 48 kHz mono/stereo preparation supported')
         original_records = [packet_records(original, s['index']) for s in (videos[0], audio[0])]
-        target = directory / 'resolve-source.mp4'
+        target = directory / f'{source.stem[:80]}-{expected_sha256[:12]}-resolve.mp4'
         command = ['ffmpeg', '-v', 'error', '-nostdin', '-n', '-copyts', '-i', str(source),
                    '-map', f"0:{videos[0]['index']}", '-map', f'0:{audio_index}',
                    '-c', 'copy', '-tag:v', videos[0]['codec_tag_string'], '-map_metadata', '-1', '-map_chapters', '-1',

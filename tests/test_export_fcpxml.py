@@ -1,5 +1,6 @@
 """Synthetic exporter verification; no real approval or Resolve project is created."""
 from copy import deepcopy
+from functools import partial
 from fractions import Fraction
 import hashlib
 import json
@@ -14,6 +15,54 @@ from scripts import export_fcpxml as ex
 from scripts import verify_approval as approval
 from scripts.probe_manifest import build_manifest
 from scripts.validate_json import load_json
+
+qualified_export = partial(ex.export, media_validation="decoded")
+
+
+@pytest.mark.parametrize('run', ['operational', 'operational-ntsc', 'operational-aac', 'operational-aac-ntsc'], indirect=True)
+def test_routine_export_uses_metadata_without_frame_decode(run, monkeypatch):
+    from scripts import verify_operational_media as operational
+    commands = []
+    original = operational.probe_to_file
+    def record(command, *args):
+        commands.append(command)
+        assert '-show_frames' not in command and '-count_frames' not in command
+        return original(command, *args)
+    monkeypatch.setattr(operational, 'probe_to_file', record)
+    monkeypatch.setattr(ex, 'verify_edit', lambda *a, **k: pytest.fail('Routine export must not run full decode'))
+    report = ex.export(run[0], None, run[2], run[3], conversation_approval=live_event(run))
+    assert commands
+    assert report['status'] == 'PASS'
+    assert report['verification_mode'] == 'OPERATIONAL_METADATA_ONLY'
+    assert report['decoded_media_verification'] == 'NOT_RUN'
+    media = load_json(run[3] / 'check/media/media-report.json')
+    assert media['decoded_audio_verification'] == 'NOT_RUN'
+    assert 'decoded_frame_count' not in media['sources'][0]['video']
+    edit = load_json(run[3] / 'check/edit-report.json')
+    assert edit['audio_cut_verification'] == 'NOT_RUN'
+    assert edit['timeline_frame_count'] == 15
+    assert (run[3] / 'timeline.fcpxml').exists()
+
+
+@pytest.mark.parametrize('run', ['operational'], indirect=True)
+@pytest.mark.parametrize('fault', ['source-hash', 'source-changed-during-probe', 'plan-after-approval'])
+def test_routine_export_blocks_current_source_or_approval_changes(run, monkeypatch, fault):
+    from scripts import verify_operational_media as operational
+    event = live_event(run)
+    if fault == 'source-hash':
+        run[4].write_bytes(run[4].read_bytes() + b'synthetic mutation')
+    elif fault == 'plan-after-approval':
+        run[0]['edit-plan'].write_bytes(run[0]['edit-plan'].read_bytes() + b' ')
+    else:
+        original = operational.probe_to_file
+        def changed(*args):
+            result = original(*args)
+            run[4].write_bytes(run[4].read_bytes() + b'synthetic mutation')
+            return result
+        monkeypatch.setattr(operational, 'probe_to_file', changed)
+    with pytest.raises(ValueError):
+        ex.export(run[0], None, run[2], run[3], conversation_approval=event)
+    assert not run[3].exists()
 
 
 @pytest.fixture
@@ -61,6 +110,17 @@ def test_deterministic_exact_rationals_policy_refs_and_encoded_paths(sample):
     assert clips[0].get('ref') == clips[1].get('ref') == asset.get('id')
     assert root.find('.//project').get('name') == sample[0]['timeline_name']
     assert root.find('.//sequence').get('duration') == '1001/2000s'
+
+
+def test_same_basename_different_sources_blocks_resolve_audio_aliasing(sample):
+    plan, media, edit, rasters = sample
+    plan['items'][1]['source_id'] = 'src-2'
+    duplicate = deepcopy(media['sources'][0])
+    duplicate.update(source_id='src-2', path='/another source/a & Ω.mov')
+    media['sources'].append(duplicate)
+    rasters['src-2'] = rasters['src-1']
+    with pytest.raises(ValueError, match='Distinct source filenames'):
+        ex.render(plan, media, edit, rasters)
 
 
 @pytest.mark.parametrize('fault', ['edit-fail', 'media-fail', 'empty', 'locked', 'audio-rate', 'mixed-raster'])
@@ -118,13 +178,13 @@ def test_xml_official_dtd_validation_and_invalid_reference(sample, dtd):
 @pytest.fixture
 def run(tmp_path, monkeypatch, dtd, request):
     variant = getattr(request, 'param', '25')
-    ntsc = variant in {'ntsc', 'aac-ntsc'}
+    ntsc = variant in {'ntsc', 'aac-ntsc'} or variant.endswith('-ntsc')
     media_path = tmp_path / 'Synthetic Ω & media.mov'
     subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-f', 'lavfi', '-i',
                     f'testsrc=size=64x48:rate={"30000/1001" if ntsc else "25"}',
                     '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000',
-                    '-t', '1.001' if ntsc else '1', '-c:v', 'mpeg4', '-pix_fmt', 'yuv420p',
-                    '-c:a', 'aac' if variant.startswith('aac') else 'pcm_s16le', str(media_path)], check=True, capture_output=True, timeout=30)
+                    '-t', '1.001' if ntsc else '1', '-c:v', 'libx264' if variant.startswith('operational') else 'mpeg4', '-pix_fmt', 'yuv420p',
+                    '-c:a', 'aac' if variant.startswith(('aac', 'operational-aac')) else 'pcm_s16le', str(media_path)], check=True, capture_output=True, timeout=30)
     build_manifest('synthetic-export', [('src-1', media_path)], tmp_path / 'inventory')
     plan = {'schema_version': '2.0.0', 'job_id': 'synthetic-export', 'revision': 'synthetic-r1',
             'timeline_name': 'Synthetic exporter acceptance', 'edit_mode': 'SEQUENTIAL_CUTS',
@@ -156,7 +216,7 @@ def run(tmp_path, monkeypatch, dtd, request):
 @pytest.mark.parametrize('run', ['25', 'ntsc', 'aac', 'aac-ntsc'], indirect=True)
 def test_live_signed_synthetic_export_passes_dtd_and_fresh_gates(run):
     original_media_hash = hashlib.sha256(run[4].read_bytes()).hexdigest()
-    report = ex.export(*run[:4])
+    report = qualified_export(*run[:4])
     assert report['status'] == 'PASS'
     assert report['timeline_frame_count'] == 15
     output = run[3]
@@ -192,8 +252,8 @@ def test_locked_synthetic_export_requires_live_context_and_fresh_binding(run):
     record.write_text(json.dumps(capture_locks(lock_paths, [decision])))
     context = TrustedLockContext(digest(record), 'SYNTHETIC_TEST_ONLY')
     with pytest.raises(ValueError, match='locked-decision'):
-        ex.export(paths, None, dtd_path, output, conversation_approval=event)
-    report = ex.export(paths, None, dtd_path, output, conversation_approval=event,
+        qualified_export(paths, None, dtd_path, output, conversation_approval=event)
+    report = qualified_export(paths, None, dtd_path, output, conversation_approval=event,
                        lock_record=record, lock_context=context)
     assert report['locks']['protected_items'] == 1
 
@@ -209,7 +269,7 @@ def test_export_refuses_tampering_without_publishing(run, fault):
         dtd.write_bytes(b'untrusted')
     if fault == 'existing-output': output.mkdir()
     with pytest.raises((ValueError, FileExistsError)):
-        ex.export(paths, signature, dtd, output)
+        qualified_export(paths, signature, dtd, output)
     assert not (output / 'timeline.fcpxml').exists()
 
 
@@ -223,7 +283,7 @@ def test_publication_boundary_changes_fail(run, monkeypatch, target):
         if target == 'signature': run[1].write_bytes(b'changed')
         if target == 'authority': monkeypatch.setattr(approval, '_trusted_bytes', lambda path: b'untrusted')
     monkeypatch.setattr(ex, 'validate_xml', mutate)
-    with pytest.raises(ValueError): ex.export(*run[:4])
+    with pytest.raises(ValueError): qualified_export(*run[:4])
     assert not run[3].exists()
 
 
@@ -268,7 +328,7 @@ def test_changes_during_evidence_copy_never_publish_xml(run, monkeypatch, target
         if target == 'authority': monkeypatch.setattr(approval, '_trusted_bytes', lambda path: b'untrusted')
         return result
     monkeypatch.setattr(ex.shutil, 'copytree', mutate)
-    with pytest.raises(ValueError): ex.export(*run[:4])
+    with pytest.raises(ValueError): qualified_export(*run[:4])
     assert not (run[3] / 'timeline.fcpxml').exists()
     assert not (run[3] / 'export-report.json').exists()
 
@@ -302,14 +362,45 @@ def live_event(run):
 def test_live_conversation_export_without_signing_policy(run, monkeypatch):
     event = live_event(run)
     monkeypatch.setattr(approval, '_trusted_bytes', lambda path: pytest.fail('No SSH trust policy needed'))
-    report = ex.export(run[0], None, run[2], run[3], conversation_approval=event)
+    report = qualified_export(run[0], None, run[2], run[3], conversation_approval=event)
     assert report['approval']['approval_method'] == 'TRUSTED_CONVERSATION'
     assert (run[3] / 'timeline.fcpxml').exists()
 
 
+def test_export_scan_limits_forward_to_real_fresh_verifier(run, monkeypatch):
+    observed = []
+    verifier = ex.verify_edit
+    def record(*args, **kwargs):
+        observed.append(kwargs)
+        return verifier(*args, **kwargs)
+    monkeypatch.setattr(ex, 'verify_edit', record)
+    report = qualified_export(run[0], None, run[2], run[3], conversation_approval=live_event(run),
+                       media_timeout=30, media_max_bytes=2 * 1024 * 1024, media_workers=2)
+    assert observed == [{'timeout': 30, 'max_bytes': 2 * 1024 * 1024, 'workers': 2}]
+    assert report['media_scan_limits'] == {'timeout_seconds': 30, 'max_output_bytes': 2 * 1024 * 1024, 'workers': 2}
+    assert load_json(run[3] / 'check/media/media-report.json')['status'] == 'PASS'
+
+
+@pytest.mark.parametrize('limits', [{'media_timeout': 0}, {'media_timeout': -1},
+    {'media_timeout': float('inf')}, {'media_timeout': float('nan')},
+    {'media_timeout': True}, {'media_timeout': '60'}, {'media_max_bytes': 0},
+    {'media_max_bytes': -1}, {'media_max_bytes': True}, {'media_max_bytes': 1.5}])
+def test_invalid_export_scan_limits_fail_before_inputs(tmp_path, limits):
+    output = tmp_path / 'export'
+    with pytest.raises(ValueError, match='media scan limits'):
+        qualified_export({}, None, tmp_path / 'missing.dtd', output, **limits)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize('workers', [0, 5, True, 1.5])
+def test_invalid_export_worker_budget_blocks_before_inputs(tmp_path, workers):
+    with pytest.raises(ValueError, match='Decoder workers'):
+        qualified_export({}, None, tmp_path/'missing.dtd', tmp_path/'export', media_workers=workers)
+
+
 def test_export_without_live_event_or_signature_is_blocked(run):
     with pytest.raises(ValueError, match='Exactly one'):
-        ex.export(run[0], None, run[2], run[3])
+        qualified_export(run[0], None, run[2], run[3])
     assert not run[3].exists()
 
 
@@ -321,7 +412,7 @@ def test_conversation_approved_plan_change_blocks_publication(run, monkeypatch):
         run[0]['edit-plan'].write_bytes(run[0]['edit-plan'].read_bytes() + b'\n')
     monkeypatch.setattr(ex, 'validate_xml', mutate)
     with pytest.raises(ValueError, match='changed'):
-        ex.export(run[0], None, run[2], run[3], conversation_approval=event)
+        qualified_export(run[0], None, run[2], run[3], conversation_approval=event)
     assert not (run[3] / 'timeline.fcpxml').exists()
 
 

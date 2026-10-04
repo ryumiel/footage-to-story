@@ -29,15 +29,28 @@ Native source-viewer playback passed on a prepared real HEVC/AAC source.
 Audible listening and measured real-source synchronization remain NOT_RUN. Other AAC profiles, nonzero
 origins, unexplained padding, mixed formats and general conversion remain blocked.
 
+## Operational policy
+
+Normal real-job exports use lightweight operational checks: current file
+existence/readability and SHA-256 identity, reported metadata and supported
+mapping, cut bounds/timeline arithmetic, nominal audio geometry, exact-plan human
+approval, and official XML validation. Reports label this
+`OPERATIONAL_METADATA_ONLY`; decoded frame/audio timing and measured sync remain
+`NOT_RUN`. Exhaustive decoding and import/render controls qualify the pipeline
+on small synthetic fixtures during development or relevant implementation
+changes. Do not require an exhaustive real-source scan before initial use or
+repeat synthetic controls per export. Decode real media only for a concrete
+issue or an explicit user request. No arbitrary cached PASS label grants trust.
+
 ## Required gates before an export
 
 1. Validate manifest, plan, and review with the existing JSON Schema library.
-2. Verify job/source IDs, actual files, source frame counts/FPS, mappings, and bounds.
+2. Verify job/source IDs, actual file hashes, reported source frame counts/FPS, supported mappings, and bounds.
 3. Check sequential timeline math, source audio behavior, and all unsupported features.
 4. Verify authentic user approval for the exact revision and SHA-256 of plan bytes.
 5. Confirm actual exporter/version support. VFR, mixed rates, retiming, separate audio,
    overlays, and transitions must fail unless separately implemented and tested.
-6. Run `scripts/export_fcpxml.py` within the documented supported scope; never
+6. Run `scripts/export_fcpxml.py` with its default operational validation within supported scope; never
    compose final FCPXML with a language model. Fetch the checksum-pinned official
    DTD explicitly with `scripts/fetch_fcpxml_dtd.py` before offline validation.
 7. Validate XML and test actual Resolve Free import as separate results.

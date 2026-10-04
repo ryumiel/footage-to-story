@@ -48,3 +48,8 @@ python scripts/validate_json.py schemas/2.0.0/edit-plan.schema.json work/JOB/edi
 
 A declarative proposed plan, not FCPXML. Every byte change requires fresh approval
 binding. No unsupported transformation is silently dropped or reported as applied.
+
+Routine real-job export uses current hashes/reported metadata and exact plan
+math/approval, not repeated whole-shoot decoding. Small synthetic fixtures
+qualify pipeline correctness. Real decoding is issue-driven or explicitly
+requested; operational reports leave decoded timing/synchronization NOT_RUN.

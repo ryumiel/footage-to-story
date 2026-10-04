@@ -419,3 +419,49 @@ def test_real_synthetic_media_gate(tmp_path, kind):
         else:
             assert video["decoded_frame_count"] == 25 and video["cfr_status"] == "CFR"
         assert media.read_bytes() == original
+
+
+@pytest.mark.parametrize('failure', [None, 'source-change', 'decoder-error'])
+def test_concurrent_decoders_preserve_order_and_block_failed_batches(tmp_path, synthetic_run, monkeypatch, failure):
+    import threading
+    path, manifest, first, calls = synthetic_run
+    second = tmp_path/'second.mov'
+    second.write_bytes(first.read_bytes())
+    source = deepcopy(manifest['sources'][0])
+    source.update(source_id='src-2', path=str(second))
+    manifest['sources'].append(source)
+    save_manifest(path, manifest)
+    decode = vm.decode_to_file
+    barrier = threading.Barrier(2, timeout=5)
+    second_finished = threading.Event()
+    def concurrent(command, output, timeout, max_bytes):
+        barrier.wait()
+        if command[-1] == str(first):
+            assert second_finished.wait(5)
+            return decode(command, output, timeout, max_bytes)
+        try:
+            if failure == 'source-change':
+                first.write_bytes(b'changed during concurrent decode')
+            if failure == 'decoder-error':
+                raise ValueError('Synthetic decoder failed')
+            return decode(command, output, timeout, max_bytes)
+        finally:
+            second_finished.set()
+    monkeypatch.setattr(vm, 'decode_to_file', concurrent)
+    output = tmp_path/'output'
+    if failure:
+        with pytest.raises(ValueError):
+            vm.verify_media(path, output, workers=2)
+        assert not output.exists()
+    else:
+        report = vm.verify_media(path, output, workers=2)
+        assert report['status'] == 'PASS'
+        assert [s['source_id'] for s in report['sources']] == ['src-1', 'src-2']
+        assert [c[-1] for c in calls] == [str(second), str(first)]
+        assert load_json(output/'decode-0002-provenance.json')['source_id'] == 'src-2'
+
+
+@pytest.mark.parametrize('workers', [0, 5, True, 1.5])
+def test_invalid_decoder_workers_fail_before_source_access(tmp_path, workers):
+    with pytest.raises(ValueError, match='Decoder workers'):
+        vm.verify_media(tmp_path/'missing.json', tmp_path/'output', workers=workers)

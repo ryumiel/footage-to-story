@@ -42,3 +42,8 @@ HEVC/AAC source. That establishes application playback, not measured real-source
 audio/video synchronization. Real-source render synchronization and audible
 listening remain NOT_RUN. The separate synthetic AAC import/render control is
 documented in [native-aac-resolve-control.md](native-aac-resolve-control.md).
+
+Prepared filenames include the source stem and original SHA-256 prefix to avoid
+Resolve audio aliasing between same-named files in different directories. The
+exporter rejects duplicate used filenames. Rename only prepared copies and
+record relocation/new manifest paths; preserve originals and plan bytes.

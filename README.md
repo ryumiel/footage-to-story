@@ -7,6 +7,19 @@ only**, and **DaVinci Resolve Free as the target editing environment**.
 **Repository revision:** v3 / tooling 0.3.0. **Stage contracts:** 2.0.0; explicit audio-selection manifests and lock snapshots: 3.0.0.
 This is a reviewed skills-and-contracts foundation, not a finished automatic editor.
 
+## Validation policy
+
+Normal real-job exports use lightweight operational checks: current file
+existence/readability and SHA-256 identity, reported metadata and supported
+mapping, cut bounds/timeline arithmetic, nominal audio geometry, exact-plan human
+approval, and official XML validation. Reports label this
+`OPERATIONAL_METADATA_ONLY`; decoded frame/audio timing and measured sync remain
+`NOT_RUN`. Exhaustive decoding and import/render controls qualify the pipeline
+on small synthetic fixtures during development or relevant implementation
+changes. Do not require an exhaustive real-source scan before initial use or
+repeat synthetic controls per export. Decode real media only for a concrete
+issue or an explicit user request. No arbitrary cached PASS label grants trust.
+
 ## What is available
 
 - Eight committed project-local skills in `.agents/skills/`; no skill-copy or
@@ -17,7 +30,8 @@ This is a reviewed skills-and-contracts foundation, not a finished automatic edi
 - Reviewed Python runtime/test resolution in `uv.lock`.
 - Local ffprobe manifest extraction with exact-byte hashes, raw metadata evidence, and explicit audio-track selection.
 - Cross-document record checks for IDs, references, ranges, and declared bounds/scope.
-- Bound source-byte checks and conservative decoded video timing scans for MOV/MP4 and WAV.
+- Routine operational export checks with current source-byte hashes and reported metadata.
+- Diagnostic decoded video/audio checks for small synthetic controls or concrete media issues.
 - Fresh-media sequential video edit checks for source bounds, exact FPS, and timeline continuity.
 - Exact zero-origin PCM sample cuts and SOURCE/MUTE checks in the fresh edit gate.
 - Bounded zero-origin AAC-LC 48 kHz mono/stereo decoded presentation clocks and

@@ -67,3 +67,8 @@ Trusted callers can now pass observed explicit human conversation approval,
 bound to the exact plan job/revision/hash, without SSH setup. See
 `docs/approval-verification.md`. The caller owns authenticity; a saved HUMAN label
 or receipt alone is not execution authority. Optional signed verification remains.
+
+Routine real-job export uses current hashes/reported metadata and exact plan
+math/approval, not repeated whole-shoot decoding. Small synthetic fixtures
+qualify pipeline correctness. Real decoding is issue-driven or explicitly
+requested; operational reports leave decoded timing/synchronization NOT_RUN.

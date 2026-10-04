@@ -1,5 +1,11 @@
 # Local Media Verification
 
+This document describes the diagnostic decoded path. It is used on small
+synthetic development fixtures or for a concrete media issue/explicit request;
+it is not a mandatory real-job export gate. Normal exports use
+`verify_operational_edit` and report decoded timing as NOT_RUN. See
+`docs/fcpxml-export.md` for the routine operational path.
+
 `scripts/verify_media.py` binds a scan to the exact manifest and source file bytes,
 decodes media with ffprobe, and conservatively checks video frame timing. It reads
 only explicitly supplied local job sources, does not modify the manifest or media,

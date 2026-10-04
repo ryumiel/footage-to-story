@@ -1,5 +1,11 @@
 # Sequential Edit Verification
 
+This document describes the diagnostic decoded path. It is used on small
+synthetic development fixtures or for a concrete media issue/explicit request;
+it is not a mandatory real-job export gate. Normal exports use
+`verify_operational_edit` and report decoded timing as NOT_RUN. See
+`docs/fcpxml-export.md` for the routine operational path.
+
 `scripts/verify_edit.py` validates supplied documents, reruns the supported media
 scan, and checks frame-based source cuts and sequential video timeline math.
 It does not modify inputs, select an edit, capture approval, or export a timeline.

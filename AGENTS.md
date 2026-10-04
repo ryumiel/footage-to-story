@@ -18,6 +18,13 @@ Read `README.md` and `ROADMAP.md` before claiming any stage is executable.
   Readers must select the exact supported version.
   Unknown fields must fail, not disappear.
   Never repair a contract by inventing source IDs, evidence, dates, or permissions.
+- For routine real jobs, use lightweight current identity/reported-metadata,
+  supported-mapping, cut-bound/timeline, nominal-audio, exact-approval and XML
+  checks. Label decoded timing and measured sync NOT_RUN. Exhaustive decoding
+  and import/render controls belong on small synthetic development fixtures,
+  including after relevant implementation changes, not mandatory real-source
+  qualification or repeated per-export tests. Real decoding requires a concrete
+  issue or explicit request. Arbitrary saved PASS labels never qualify media.
 - Keep cross-file/media invariants separate from schemas. Declared-document checks,
   source-hash/decoded-video scans, and sequential video edit checks are implemented;
   zero-origin PCM sample cuts and bounded native AAC-LC 48 kHz mono/stereo

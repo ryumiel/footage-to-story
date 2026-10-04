@@ -1,6 +1,8 @@
 """Verify local file identity and decoded video timing; never authorize export."""
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+
 import argparse
 from fractions import Fraction
 import hashlib
@@ -180,7 +182,9 @@ def decode_to_file(command: list[str], path: Path, timeout: float, max_bytes: in
 
 
 def verify_media(manifest_path: Path, output: Path, ffprobe: str = "ffprobe",
-                 timeout: float = 60, max_bytes: int = 64 * 1024 * 1024) -> dict:
+                 timeout: float = 60, max_bytes: int = 64 * 1024 * 1024, *, workers: int = 1) -> dict:
+    if type(workers) is not int or not 1 <= workers <= 4:
+        raise ValueError('Decoder workers must be an integer from 1 to 4')
     if not math.isfinite(timeout) or timeout <= 0 or not isinstance(max_bytes, int) or isinstance(max_bytes, bool) or max_bytes <= 0:
         raise ValueError("Timeout and output-byte limit must be finite positive values")
     output = check_output_directory(output)
@@ -210,9 +214,8 @@ def verify_media(manifest_path: Path, output: Path, ffprobe: str = "ffprobe",
               "not_checked": ["timeline continuity", "edit audio cuts/synchronization", "proxy mappings",
                               "document references", "permission authenticity", "approval", "export"]}
     # Temporary decode files are external runtime artifacts, never source fixtures.
-    with tempfile.TemporaryDirectory(prefix="footage-media-check-") as temporary:
-        evidence = []
-        for number, (source, path, before) in enumerate(zip(manifest["sources"], paths, signatures), 1):
+    with tempfile.TemporaryDirectory(prefix="footage-media-check-") as temporary, ThreadPoolExecutor(max_workers=workers) as executor:
+        def scan_source(number, source, path):
             digest = hashlib.sha256()
             with path.open("rb") as media:
                 for chunk in iter(lambda: media.read(1024 * 1024), b""):
@@ -225,6 +228,14 @@ def verify_media(manifest_path: Path, output: Path, ffprobe: str = "ffprobe",
                        "frame=stream_index,media_type,pts,duration,nb_samples,sample_fmt,channels,side_data_list,width,height,interlaced_frame", "-of", "json", str(path)]
             raw_path = Path(temporary) / f"decode-{number:04d}.json"
             stderr = decode_to_file(command, raw_path, timeout, max_bytes)
+            return digest.hexdigest(), command, raw_path, stderr
+
+        futures = {number: executor.submit(scan_source, number, source, path)
+                   for number, (source, path) in enumerate(zip(manifest['sources'], paths), 1)} if workers > 1 else {}
+        evidence = []
+        for number, (source, path, before) in enumerate(zip(manifest["sources"], paths, signatures), 1):
+            source_sha256, command, raw_path, stderr = (futures[number].result() if futures
+                                                       else scan_source(number, source, path))
             probe = load_json(raw_path)
             if not isinstance(probe, dict):
                 raise ValueError("Decode evidence must be an object")
@@ -245,13 +256,13 @@ def verify_media(manifest_path: Path, output: Path, ffprobe: str = "ffprobe",
             if file_signature(path) != before:
                 raise ValueError(f"Source changed during verification: {path}")
             report["sources"].append({"source_id": source["source_id"], "path": str(path),
-                                       "content_sha256": digest.hexdigest(), **decoded,
+                                       "content_sha256": source_sha256, **decoded,
                                        "issues": issues, "status": "FAIL" if issues else "PASS"})
             if issues:
                 report["status"] = "FAIL"
             evidence.append((raw_path, {"source_id": source["source_id"], "command": command,
                                        "ffprobe_version": version, "stderr": stderr,
-                                       "stat_signature": list(before), "content_sha256": digest.hexdigest()}))
+                                       "stat_signature": list(before), "content_sha256": source_sha256}))
         if file_signature(manifest_path) != initial_manifest_stat or any(file_signature(path) != sig for path, sig in zip(paths, signatures)):
             raise ValueError("Manifest or source changed during batch verification")
         output.mkdir(parents=True, exist_ok=False)

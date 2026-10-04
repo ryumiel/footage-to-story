@@ -79,6 +79,18 @@ to a trusted human event by future execution code.
 
 ## 6. Document integrity and media gates remain separate from schemas
 
+Normal real-job exports use lightweight operational checks: current file
+existence/readability and SHA-256 identity, reported metadata and supported
+mapping, cut bounds/timeline arithmetic, nominal audio geometry, exact-plan human
+approval, and official XML validation. Reports label this
+`OPERATIONAL_METADATA_ONLY`; decoded frame/audio timing and measured sync remain
+`NOT_RUN`. Exhaustive decoding and import/render controls qualify the pipeline
+on small synthetic fixtures during development or relevant implementation
+changes. Do not require an exhaustive real-source scan before initial use or
+repeat synthetic controls per export. Decode real media only for a concrete
+issue or an explicit user request. No arbitrary cached PASS label grants trust.
+
+
 The following checks cannot be replaced by passing a single-document schema:
 
 | Invariant | Required evidence |
@@ -104,9 +116,11 @@ Unknown declared bounds block range checks needing them. See
 The table describes the evidence required for complete execution, not the proof
 provided by the record helpers. A separate bounded source/video scanner now checks
 current hashes, decoded counts, and exact video PTS/CFR (`docs/media-verification.md`).
-`scripts/verify_edit.py` now reruns that scan and checks zero-origin CFR edit bounds,
+The diagnostic `scripts/verify_edit.py` can run that scan and check zero-origin CFR edit bounds.
+Routine exports use `verify_operational_edit` with current hashes/reported mapping,
 exact select-window containment, matching FPS, and sequential video timeline math
-and zero-origin PCM sample cuts (`docs/edit-verification.md`). Compressed-audio
+and nominal audio sample geometry. Decoded PCM/AAC sample checks remain on the
+diagnostic path (`docs/edit-verification.md`). Compressed-audio
 conversion, nonzero-origin/proxy maps, prior locks,
 and a general conversation-host adapter remains unimplemented. External-trust signature and
 exact plan approval-binding checks exist separately (`docs/approval-verification.md`).

@@ -20,19 +20,21 @@ try:
     from .validate_json import _unique_object, _reject_constant
     from .verify_media import rational, verify_media
     from .audio_timing import sample_cut
+    from .verify_operational_media import verify_operational_media, reported_sample_cut
 except ImportError:
     from check_integrity import STAGES, IntegrityIssue, check_documents
     from probe_manifest import MAX_INTEGER, check_output_directory, file_signature
     from validate_json import _unique_object, _reject_constant
     from verify_media import rational, verify_media
     from audio_timing import sample_cut
+    from verify_operational_media import verify_operational_media, reported_sample_cut
 
 
-def analyze_edit(documents: dict, media: dict, *, subtitle_timing: bool = False) -> dict:
-    """Compare validated records with a trusted, freshly generated scan in memory.
+def analyze_edit(documents: dict, media: dict, *, subtitle_timing: bool = False, operational: bool = False) -> dict:
+    """Compare validated records with current operational or decoded evidence.
 
     This is an internal calculation helper, not a saved-report validation API.
-    The CLI below always regenerates the scan from current source files.
+    Normal exports use metadata checks; the standalone CLI is a diagnostic decoder.
     """
     issues = check_documents(documents)
     if "edit-plan" not in documents:
@@ -59,7 +61,7 @@ def analyze_edit(documents: dict, media: dict, *, subtitle_timing: bool = False)
     if media["job_id"] != documents["manifest"]["job_id"]:
         issue("", "MEDIA_JOB_MISMATCH", "Media scan belongs to a different job")
     if media["status"] != "PASS":
-        issue("", "MEDIA_SCAN_FAILED", "Every source must pass the fresh media scan")
+        issue("", "MEDIA_SCAN_FAILED", "Every source must pass the selected current-media checks")
     measured = {source["source_id"]: source for source in media["sources"]}
     timeline_fps = Fraction(int(plan["timeline_fps"]["num"]), int(plan["timeline_fps"]["den"]))
     selects = {item["select_id"]: item for item in documents.get("selects", {}).get("items", [])}
@@ -81,17 +83,17 @@ def analyze_edit(documents: dict, media: dict, *, subtitle_timing: bool = False)
         video = scan.get("video") if scan else None
         audio_cut = {"status": "NOT_APPLICABLE", "policy": item["audio_policy"]}
         if scan is None or scan["status"] != "PASS":
-            issue(path + "/source_id", "SOURCE_SCAN_FAILED", "Referenced source has no passing fresh scan")
+            issue(path + "/source_id", "SOURCE_SCAN_FAILED", "Referenced source has no passing current-media checks")
         elif video is None:
-            issue(path + "/source_id", "VIDEO_REQUIRED", "Frame cuts require a decoded video stream")
-        elif video["cfr_status"] != "CFR" or video["fps"] is None:
-            issue(path, "CFR_REQUIRED", "Only exact decoded CFR timing is supported")
+            issue(path + "/source_id", "VIDEO_REQUIRED", "Frame cuts require a supported video stream")
+        elif video["cfr_status"] != ("REPORTED_COMPATIBLE" if operational else "CFR") or video["fps"] is None:
+            issue(path, "CFR_REQUIRED", "A compatible reported frame grid is required" if operational else "Only exact decoded CFR timing is supported")
         else:
             fps = Fraction(video["fps"]["num"], video["fps"]["den"])
             if fps != timeline_fps:
-                issue(path, "MIXED_FPS_UNSUPPORTED", "Decoded source FPS must equal timeline FPS; no retiming is implemented")
-            if source_out > video["decoded_frame_count"]:
-                issue(path + "/source_out_frame", "DECODED_SOURCE_BOUND", "Source OUT exceeds the decoded video frame count")
+                issue(path, "MIXED_FPS_UNSUPPORTED", "Source FPS must equal timeline FPS; no retiming is implemented")
+            if source_out > video["reported_frame_count" if operational else "decoded_frame_count"]:
+                issue(path + "/source_out_frame", "REPORTED_SOURCE_BOUND" if operational else "DECODED_SOURCE_BOUND", "Source OUT exceeds the supported source frame count")
             if item.get("select_ref") is not None:
                 selected = selects[item["select_ref"]]
                 if Fraction(source_in, 1) / fps < Fraction(int(selected["start_ms"]), 1000) or Fraction(source_out, 1) / fps > Fraction(int(selected["end_ms"]), 1000):
@@ -104,7 +106,8 @@ def analyze_edit(documents: dict, media: dict, *, subtitle_timing: bool = False)
                     audio_cut = {'status': 'NOT_RUN', 'policy': 'SOURCE',
                                  'reason': 'Subtitle timing does not verify audio sample cuts'}
                 else:
-                    audio_cut = sample_cut(audio["timing"], source_in, source_out, timeline_in, fps)
+                    audio_cut = (reported_sample_cut(audio, source_in, source_out, timeline_in, fps) if operational
+                                 else sample_cut(audio["timing"], source_in, source_out, timeline_in, fps))
                     if audio["timing"].get('mode') == 'AAC_NATIVE':
                         audio_cut.update(timing_mode='AAC_NATIVE', original_encoded_asset_retained=True,
                                          application_decode_sync='NOT_RUN')
@@ -115,12 +118,15 @@ def analyze_edit(documents: dict, media: dict, *, subtitle_timing: bool = False)
                         issue(path + "/audio_policy", "MIXED_AUDIO_FORMAT_UNSUPPORTED", "SOURCE clips must have one sample rate and channel count; no conversion is implemented")
                     source_audio_format = audio_format
                     for code in audio_cut["issues"]:
-                        issue(path + "/audio_policy", code, "SOURCE audio cannot be synchronized at exact decoded sample boundaries")
+                        issue(path + "/audio_policy", code, "SOURCE audio nominal sample geometry is unsupported" if operational else "SOURCE audio cannot be synchronized at exact decoded sample boundaries")
         result["items"].append({"edit_id": item["edit_id"], "source_id": item["source_id"],
                                 "source_in_frame": source_in, "source_out_frame": source_out,
                                 "timeline_in_frame": timeline_in, "timeline_out_frame": timeline_out,
                                 "frame_count": length, "duration_seconds": rational(Fraction(length, 1) / timeline_fps),
                                 "audio_policy": item["audio_policy"], "audio_cut": audio_cut})
+    if operational:
+        result.update(verification_mode="OPERATIONAL_METADATA_ONLY", audio_cut_verification="NOT_RUN",
+                      decoded_video_verification="NOT_RUN", decoded_audio_verification="NOT_RUN")
     if result["status"] == "PASS":
         result["source_audio_format"] = ({"sample_rate": source_audio_format[0], "channels": source_audio_format[1]}
                                           if source_audio_format else None)
@@ -130,9 +136,15 @@ def analyze_edit(documents: dict, media: dict, *, subtitle_timing: bool = False)
 
 
 def verify_edit(paths: dict[str, Path], output: Path, ffprobe: str = "ffprobe",
-                timeout: float = 60, max_bytes: int = 64 * 1024 * 1024) -> dict:
+                timeout: float = 60, max_bytes: int = 64 * 1024 * 1024, *, workers: int = 1) -> dict:
     """Fresh video and decoded PCM/bounded native AAC sample-cut geometry."""
-    return _verify_edit(paths, output, ffprobe, timeout, max_bytes, subtitle_timing=False)
+    return _verify_edit(paths, output, ffprobe, timeout, max_bytes, subtitle_timing=False, workers=workers)
+
+
+def verify_operational_edit(paths: dict[str, Path], output: Path, ffprobe: str = "ffprobe",
+                            timeout: float = 60, max_bytes: int = 64 * 1024 * 1024) -> dict:
+    """Current hashes/reported mapping and exact plan math without full decoding."""
+    return _verify_edit(paths, output, ffprobe, timeout, max_bytes, subtitle_timing=False, operational=True)
 
 
 def verify_subtitle_timing(paths: dict[str, Path], output: Path, ffprobe: str = "ffprobe",
@@ -142,8 +154,8 @@ def verify_subtitle_timing(paths: dict[str, Path], output: Path, ffprobe: str = 
 
 
 def _verify_edit(paths: dict[str, Path], output: Path, ffprobe: str,
-                 timeout: float, max_bytes: int, *, subtitle_timing: bool) -> dict:
-    """Snapshot supplied documents, rerun decoding, then publish exact calculations."""
+                 timeout: float, max_bytes: int, *, subtitle_timing: bool, workers: int = 1, operational: bool = False) -> dict:
+    """Snapshot documents, run selected media checks, publish exact calculations."""
     if set(paths) - set(STAGES):
         raise ValueError("Unknown document stages")
     if not {"manifest", "edit-plan"} <= set(paths):
@@ -161,19 +173,22 @@ def _verify_edit(paths: dict[str, Path], output: Path, ffprobe: str,
     hashes = {stage: hashlib.sha256(data).hexdigest() for stage, data in raw.items()}
     with tempfile.TemporaryDirectory(prefix="footage-edit-check-") as temporary:
         scan_directory = Path(temporary) / "media"
-        media = verify_media(resolved["manifest"], scan_directory, ffprobe, timeout, max_bytes)
+        media = (verify_operational_media(resolved["manifest"], scan_directory, ffprobe, timeout, max_bytes)
+                 if operational else verify_media(resolved["manifest"], scan_directory, ffprobe, timeout, max_bytes,
+                                                  **({"workers": workers} if workers != 1 else {})))
         if media["manifest_sha256"] != hashes["manifest"]:
             raise ValueError("Manifest changed between document validation and media scan")
-        result = analyze_edit(documents, media, subtitle_timing=subtitle_timing)
+        result = analyze_edit(documents, media, subtitle_timing=subtitle_timing, operational=operational)
         result.update(job_id=documents["manifest"]["job_id"], revision=documents["edit-plan"]["revision"],
                       input_sha256=hashes)
         # Recheck all documents and sources after calculations, before publication.
         if any(file_signature(path) != signatures[stage] or hashlib.sha256(path.read_bytes()).hexdigest() != hashes[stage]
                for stage, path in resolved.items()):
             raise ValueError("An input document changed during edit verification")
+        prefix = "probe" if operational else "decode"
         for number, source in enumerate(media["sources"], 1):
             path = Path(source["path"])
-            provenance = json.loads((scan_directory / f"decode-{number:04d}-provenance.json").read_text(encoding="utf-8"))
+            provenance = json.loads((scan_directory / f"{prefix}-{number:04d}-provenance.json").read_text(encoding="utf-8"))
             if list(file_signature(path)) != provenance["stat_signature"]:
                 raise ValueError("A source changed after the fresh media scan")
         output.mkdir(parents=True, exist_ok=False)

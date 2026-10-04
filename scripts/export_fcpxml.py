@@ -5,6 +5,7 @@ import argparse
 from fractions import Fraction
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -19,7 +20,7 @@ try:
     from .probe_manifest import check_output_directory, file_signature, positive_integer
     from .validate_json import ROOT, load_json
     from .verify_approval import _read, verify_approval, _trusted_bytes, verify_conversation_approval, ConversationApproval
-    from .verify_edit import verify_edit
+    from .verify_edit import verify_edit, verify_operational_edit
     from .verify_locks import TrustedLockContext, verify_locks
 except ImportError:
     from check_integrity import STAGES
@@ -27,7 +28,7 @@ except ImportError:
     from probe_manifest import check_output_directory, file_signature, positive_integer
     from validate_json import ROOT, load_json
     from verify_approval import _read, verify_approval, _trusted_bytes, verify_conversation_approval, ConversationApproval
-    from verify_edit import verify_edit
+    from verify_edit import verify_edit, verify_operational_edit
     from verify_locks import TrustedLockContext, verify_locks
 
 XMLLINT = Path('/usr/bin/xmllint')
@@ -37,7 +38,7 @@ def time_value(value: Fraction) -> str:
     return f'{value.numerator}/{value.denominator}s' if value.denominator != 1 else f'{value.numerator}s'
 
 
-def geometry(probe: dict, stream_index: int) -> tuple[int, int]:
+def geometry(probe: dict, stream_index: int, *, operational: bool = False) -> tuple[int, int]:
     if sum(s.get('codec_type') == 'audio' for s in probe['streams']) > 1:
         raise ValueError('Multiple audio tracks require an unsupported exporter stream mapping')
     if any(s.get('codec_type') not in {'video', 'audio'} or s.get('disposition', {}).get('attached_pic')
@@ -47,11 +48,14 @@ def geometry(probe: dict, stream_index: int) -> tuple[int, int]:
         raise ValueError('Embedded source timecode mapping unsupported')
     stream = next(s for s in probe['streams'] if s['index'] == stream_index)
     width, height = positive_integer(stream.get('width')), positive_integer(stream.get('height'))
-    if width is None or height is None or stream.get('sample_aspect_ratio') != '1:1':
+    sar = stream.get('sample_aspect_ratio')
+    if width is None or height is None or (sar != '1:1' and not (operational and sar in {None, 'N/A', '0:1'})):
         raise ValueError('Known square-pixel raster required')
     if stream.get('side_data_list') or 'rotate' in stream.get('tags', {}):
         raise ValueError('Video side data/rotation mapping unsupported')
-    for frame in probe['frames']:
+    if operational and stream.get("field_order") not in {None, 'unknown', 'progressive'}:
+        raise ValueError("Reported progressive scan required")
+    for frame in ([] if operational else probe["frames"]):
         if frame['stream_index'] != stream_index:
             continue
         if frame.get('side_data_list'):
@@ -62,7 +66,7 @@ def geometry(probe: dict, stream_index: int) -> tuple[int, int]:
 
 
 def render(plan: dict, media: dict, edit: dict, rasters: dict, *, locks_verified: bool = False) -> bytes:
-    """Internal serializer for trusted fresh gate results, not saved report input."""
+    """Internal serializer for current gate results, not arbitrary saved reports."""
     if edit['status'] != 'PASS' or media['status'] != 'PASS' or not plan['items']:
         raise ValueError('Nonempty verified edit required')
     if any(item['locked'] for item in plan['items']) and not locks_verified:
@@ -81,12 +85,14 @@ def render(plan: dict, media: dict, edit: dict, rasters: dict, *, locks_verified
     ET.SubElement(resources, 'format', id='r1', frameDuration=time_value(1 / rate),
                   width=str(width), height=str(height), fieldOrder='progressive', paspH='1', paspV='1')
     measured = {s['source_id']: s for s in media['sources']}
+    if len({Path(measured[source_id]['path']).name.casefold() for source_id in used}) != len(used):
+        raise ValueError('Distinct source filenames required for reliable Resolve audio linking')
     refs = {source_id: f'r{number + 2}' for number, source_id in enumerate(used)}
     for source_id in used:
         source = measured[source_id]
         attributes = {'id': refs[source_id], 'name': source_id,
                       'src': Path(source['path']).as_uri(), 'start': '0s', 'hasVideo': '1',
-                      'format': 'r1', 'duration': time_value(Fraction(source['video']['decoded_frame_count'], 1) / rate),
+                      'format': 'r1', 'duration': time_value(Fraction(source['video']['reported_frame_count'] if media.get('verification_mode') == 'OPERATIONAL_METADATA_ONLY' else source['video']['decoded_frame_count'], 1) / rate),
                       'hasAudio': '1' if source['audio'] else '0'}
         if source['audio']:
             attributes.update(audioSources='1', audioChannels=str(source['audio']['channels']),
@@ -128,7 +134,16 @@ def validate_xml(xml: bytes, dtd: bytes) -> None:
 
 def export(paths: dict[str, Path], signature: Path | None, dtd_path: Path, output: Path,
            *, conversation_approval: ConversationApproval | None = None,
-           lock_record: Path | None = None, lock_context: TrustedLockContext | None = None) -> dict:
+           lock_record: Path | None = None, lock_context: TrustedLockContext | None = None,
+           media_timeout: float = 60, media_max_bytes: int = 64 * 1024 * 1024,
+           media_workers: int = 1, media_validation: str = "operational") -> dict:
+    if media_validation not in {"operational", "decoded"}:
+        raise ValueError("Media validation must be operational or decoded")
+    if (type(media_timeout) not in (int, float) or not math.isfinite(media_timeout)
+            or media_timeout <= 0 or type(media_max_bytes) is not int or media_max_bytes <= 0):
+        raise ValueError('Finite positive media scan limits required')
+    if type(media_workers) is not int or not 1 <= media_workers <= 4:
+        raise ValueError('Decoder workers must be an integer from 1 to 4')
     output = check_output_directory(output)
     if not {'manifest', 'edit-plan', 'review'} <= paths.keys() or paths.keys() - set(STAGES):
         raise ValueError('Manifest, edit plan, review, and known stages required')
@@ -163,7 +178,10 @@ def export(paths: dict[str, Path], signature: Path | None, dtd_path: Path, outpu
             parts = output.relative_to(ROOT).parts
             if len(parts) < 3 or parts[:2] != ('artifacts', approval['job_id']):
                 raise ValueError('Repository exports require artifacts/<job_id>/<new-run>')
-        edit = verify_edit(frozen, directory / 'check')
+        operational = media_validation == "operational"
+        edit = (verify_operational_edit(frozen, directory / "check", timeout=media_timeout, max_bytes=media_max_bytes)
+                if operational else verify_edit(frozen, directory / "check", timeout=media_timeout,
+                                                max_bytes=media_max_bytes, workers=media_workers))
         if edit['status'] != 'PASS':
             raise ValueError('Fresh edit/media checks failed')
         if edit['input_sha256']['edit-plan'] != approval['edit_plan_sha256'] or edit['input_sha256']['review'] != approval['review_sha256']:
@@ -171,8 +189,23 @@ def export(paths: dict[str, Path], signature: Path | None, dtd_path: Path, outpu
         media_dir = directory / 'check' / 'media'
         media = load_json(media_dir / 'media-report.json')
         used = {item['source_id'] for item in load_json(frozen['edit-plan'])['items']}
-        rasters = {source['source_id']: geometry(load_json(media_dir / f'decode-{number:04d}.json'), source['video']['stream_index'])
+        prefix = 'probe' if operational else 'decode'
+        rasters = {source['source_id']: geometry(load_json(media_dir / f'{prefix}-{number:04d}.json'), source['video']['stream_index'], operational=operational)
                    for number, source in enumerate(media['sources'], 1) if source['source_id'] in used}
+        mapping_defaults = []
+        if operational:
+            for number, source in enumerate(media['sources'], 1):
+                if source['source_id'] not in used:
+                    continue
+                probe = load_json(media_dir / f'probe-{number:04d}.json')
+                video = next(s for s in probe['streams'] if s['index'] == source['video']['stream_index'])
+                defaults = []
+                if video.get('sample_aspect_ratio') != '1:1':
+                    defaults.append('Unspecified pixel aspect uses square-pixel import default')
+                if video.get('field_order') != 'progressive':
+                    defaults.append('Unspecified scan uses progressive import default; decoded scan NOT_RUN')
+                if defaults:
+                    mapping_defaults.append({'source_id': source['source_id'], 'defaults': defaults})
         xml = render(load_json(frozen['edit-plan']), media, edit, rasters, locks_verified=locks is not None)
         validate_xml(xml, dtd)
         def publication_guard():
@@ -184,12 +217,17 @@ def export(paths: dict[str, Path], signature: Path | None, dtd_path: Path, outpu
             if check_locks() != locks:
                 raise ValueError('Historical locks changed during execution')
             for number, source in enumerate(media['sources'], 1):
-                provenance = load_json(media_dir / f'decode-{number:04d}-provenance.json')
+                provenance = load_json(media_dir / f'{prefix}-{number:04d}-provenance.json')
                 if list(file_signature(Path(source['path']))) != provenance['stat_signature']:
                     raise ValueError('Media changed before export publication')
 
         publication_guard()
         report = {'status': 'PASS', 'job_id': edit['job_id'], 'revision': edit['revision'],
+                  'media_scan_limits': {'timeout_seconds': media_timeout,
+                                        'max_output_bytes': media_max_bytes, 'workers': media_workers},
+                  'verification_mode': 'OPERATIONAL_METADATA_ONLY' if operational else 'DECODED_MEDIA',
+                  'decoded_media_verification': 'NOT_RUN' if operational else 'PASS',
+                  'operational_mapping_defaults': mapping_defaults,
                   'fcpxml_version': '1.7', 'xml_sha256': hashlib.sha256(xml).hexdigest(),
                   'dtd_sha256': DTD_SHA256, 'approval': approval,
                   'timeline_frame_count': edit['timeline_frame_count'],
@@ -216,10 +254,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--signature', type=Path, required=True)
     parser.add_argument('--dtd', type=Path, required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
+    parser.add_argument('--media-timeout', type=float, default=60)
+    parser.add_argument('--media-max-output-bytes', type=int, default=64 * 1024 * 1024)
+    parser.add_argument('--media-workers', type=int, default=1)
+    parser.add_argument('--media-validation', choices=['operational', 'decoded'], default='operational')
     args = parser.parse_args(argv)
     paths = {stage: path for stage in STAGES if (path := getattr(args, stage.replace('-', '_'))) is not None}
     try:
-        report = export(paths, args.signature, args.dtd, args.output_dir)
+        report = export(paths, args.signature, args.dtd, args.output_dir,
+                        media_timeout=args.media_timeout,
+                        media_max_bytes=args.media_max_output_bytes,
+                        media_workers=args.media_workers, media_validation=args.media_validation)
     except (OSError, ValueError, subprocess.SubprocessError) as exc:
         print(f'EXPORT_ERROR: {exc}', file=sys.stderr)
         return 2
