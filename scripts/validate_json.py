@@ -7,6 +7,7 @@ This command does NOT check cross-document/media integrity or authorize export.
 from __future__ import annotations
 
 import argparse
+from functools import lru_cache
 import json
 import sys
 from pathlib import Path
@@ -44,15 +45,22 @@ def load_json(path: str | Path) -> Any:
     )
 
 
-def load_registry(schema_dir: Path = SCHEMA_DIR) -> Registry:
-    """Register trusted local schemas. The registry has no network retriever."""
-    paths = sorted(schema_dir.rglob("*.schema.json"))
-    if not paths:
-        raise ValueError(f"No schema files found under {schema_dir}")
-    resources = []
+def _schema_contents(raw: bytes) -> Any:
+    return json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object,
+                      parse_constant=_reject_constant)
+
+
+@lru_cache(maxsize=8)
+def _qualify_snapshot(snapshot: tuple[tuple[str, bytes], ...]) -> None:
+    """Cache only successful schema self-validation, keyed by exact local bytes.
+
+    Membership/path changes and edits, including same-size edits with restored
+    mtimes, create a new key. No mutable schema or validator is shared with callers.
+    Invalid snapshots raise and are not cached.
+    """
     identifiers: set[str] = set()
-    for path in paths:
-        schema = load_json(path)
+    for path, raw in snapshot:
+        schema = _schema_contents(raw)
         if not isinstance(schema, dict) or schema.get("$schema") != DIALECT:
             raise ValueError(f"Expected an explicit Draft 2020-12 schema: {path}")
         identifier = schema.get("$id")
@@ -62,6 +70,21 @@ def load_registry(schema_dir: Path = SCHEMA_DIR) -> Registry:
             raise ValueError(f"Duplicate schema $id: {identifier}")
         Draft202012Validator.check_schema(schema)
         identifiers.add(identifier)
+
+
+def load_registry(schema_dir: Path = SCHEMA_DIR) -> Registry:
+    """Read current schemas; reuse byte-bound qualification, never fetch remotely."""
+    paths = sorted(schema_dir.resolve().rglob("*.schema.json"))
+    if not paths:
+        raise ValueError(f"No schema files found under {schema_dir}")
+    snapshot = tuple((str(path), path.read_bytes()) for path in paths)
+    _qualify_snapshot(snapshot)
+    # Fresh parsed objects prevent a caller mutating a validator/registry from
+    # poisoning subsequent validation. Document validation always runs normally.
+    resources = []
+    for _, raw in snapshot:
+        schema = _schema_contents(raw)
+        identifier = schema["$id"]
         resources.append((identifier, Resource.from_contents(schema)))
     return Registry().with_resources(resources)
 

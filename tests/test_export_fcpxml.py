@@ -175,16 +175,32 @@ def test_xml_official_dtd_validation_and_invalid_reference(sample, dtd):
         ex.validate_xml(invalid, dtd.read_bytes())
 
 
-@pytest.fixture
-def run(tmp_path, monkeypatch, dtd, request):
-    variant = getattr(request, 'param', '25')
-    ntsc = variant in {'ntsc', 'aac-ntsc'} or variant.endswith('-ntsc')
-    media_path = tmp_path / 'Synthetic Ω & media.mov'
-    subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-f', 'lavfi', '-i',
+@pytest.fixture(scope='module')
+def encoded_fixture_bytes(tmp_path_factory):
+    directory = tmp_path_factory.mktemp('export-fixtures')
+    variants = {}
+    def generate(variant):
+        if variant in variants:
+            return variants[variant]
+        ntsc = variant in {'ntsc', 'aac-ntsc'} or variant.endswith('-ntsc')
+        media_path = directory / f'{variant}.mov'
+        subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-f', 'lavfi', '-i',
                     f'testsrc=size=64x48:rate={"30000/1001" if ntsc else "25"}',
                     '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000',
                     '-t', '1.001' if ntsc else '1', '-c:v', 'libx264' if variant.startswith('operational') else 'mpeg4', '-pix_fmt', 'yuv420p',
                     '-c:a', 'aac' if variant.startswith(('aac', 'operational-aac')) else 'pcm_s16le', str(media_path)], check=True, capture_output=True, timeout=30)
+        variants[variant] = media_path.read_bytes()
+        return variants[variant]
+    return generate
+
+
+@pytest.fixture
+def run(tmp_path, monkeypatch, dtd, request, encoded_fixture_bytes):
+    variant = getattr(request, 'param', '25')
+    ntsc = variant in {'ntsc', 'aac-ntsc'} or variant.endswith('-ntsc')
+    media_path = tmp_path / 'Synthetic Ω & media.mov'
+    # Tests mutate only their private copies, never a shared file or manifest.
+    media_path.write_bytes(encoded_fixture_bytes(variant))
     build_manifest('synthetic-export', [('src-1', media_path)], tmp_path / 'inventory')
     plan = {'schema_version': '2.0.0', 'job_id': 'synthetic-export', 'revision': 'synthetic-r1',
             'timeline_name': 'Synthetic exporter acceptance', 'edit_mode': 'SEQUENTIAL_CUTS',

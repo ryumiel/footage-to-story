@@ -1,5 +1,33 @@
 # Validation Strategy
 
+## Development test selection and schema qualification
+
+For a localized change, run the affected component tests and its consumers.
+Schema/registry changes affect every stage and require a full-suite run. Use
+`python -m pytest -q` for broad changes and release checkpoints; do not repeat
+the full suite after unchanged code has already passed it.
+
+Typical focused selections:
+
+| Change | Tests |
+|---|---|
+| Schema loading or cache | `test_schema_cache.py`, `test_schemas.py`, `test_integrity.py`; then the full suite |
+| Export mapping or operational media | `test_export_fcpxml.py`, `test_verify_operational_media.py`, `test_verify_edit.py` |
+| Source preparation | `test_prepare_resolve_media.py`, `test_export_fcpxml.py` |
+| Decoded timing | `test_verify_media.py`, `test_verify_edit.py`, `test_export_fcpxml.py` |
+
+The loader reads current local schema bytes and membership on every registry
+load. A bounded in-process cache retains successful Draft 2020-12 schema
+self-validation for at most eight exact path/byte snapshots. Edits do not rely
+on timestamps, and invalid snapshots are not cached. Each caller receives fresh
+parsed resources and a fresh validator with offline resolution and format
+checking. Document validation still runs on every input; no instance results or
+approval results are cached. Restarting the process clears qualification reuse.
+
+Exporter tests reuse immutable encoded synthetic fixture bytes per variant,
+then write private files before inventory generation or mutation. Hashes,
+manifests, approvals and media probes remain test-local.
+
 ## 1. Use existing standards and libraries
 
 The canonical contracts are JSON Schema Draft 2020-12 files. `jsonschema` owns
